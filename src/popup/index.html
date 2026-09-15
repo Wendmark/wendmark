@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Wend</title>
+    <style>
+      body {
+        width: 260px;
+        margin: 0;
+        padding: 14px;
+        font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #1c1b22;
+        color: #f5f4fa;
+      }
+      h1 { font-size: 15px; margin: 0 0 10px; }
+      h2 {
+        font-size: 11px;
+        margin: 14px 0 6px;
+        color: #8f8c9c;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      button {
+        display: block;
+        width: 100%;
+        margin-bottom: 8px;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        color: #fff;
+      }
+      .primary { background: #6d5ef1; }
+      .primary:hover { background: #7d70f4; }
+      .secondary { background: #3a3747; }
+      .secondary:hover { background: #4a4659; }
+      .danger { background: #e5484d; }
+      .danger:hover { background: #ec5e63; }
+      input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 8px;
+        padding: 8px 10px;
+        border: 1px solid #3a3747;
+        border-radius: 8px;
+        background: #26242e;
+        color: #f5f4fa;
+        font-size: 13px;
+      }
+      input[type="text"]:focus { outline: none; border-color: #6d5ef1; }
+      #status { min-height: 1.4em; margin: 4px 0 0; font-size: 12px; color: #b9b3f0; }
+      .hidden { display: none !important; }
+      ul { margin: 0; padding: 0 0 0 4px; list-style: none; }
+      li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #c9c6d4;
+        padding: 3px 0;
+      }
+      li .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      li .count { color: #8f8c9c; flex-shrink: 0; }
+      li button {
+        display: inline-block;
+        width: auto;
+        margin: 0;
+        padding: 3px 8px;
+        font-size: 11px;
+        border-radius: 6px;
+        flex-shrink: 0;
+      }
+      li button:disabled { opacity: 0.5; cursor: default; }
+    </style>
+  </head>
+  <body>
+    <h1>Wend</h1>
+
+    <h2>Play</h2>
+    <button id="play" class="primary">Play test process</button>
+    <button id="stop-play" class="secondary">Stop guidance</button>
+
+    <h2>Record</h2>
+    <button id="record" class="danger">Start recording</button>
+    <div id="save-form" class="hidden">
+      <input id="rec-name" type="text" placeholder="Name this recording…" />
+      <button id="save" class="primary">Save recording</button>
+      <button id="discard" class="secondary">Discard</button>
+    </div>
+
+    <div id="recordings-section" class="hidden">
+      <h2>Saved recordings</h2>
+      <ul id="recordings"></ul>
+    </div>
+
+    <div id="processes-section" class="hidden">
+      <h2>Processes</h2>
+      <ul id="processes"></ul>
+    </div>
+
+    <h2>Edit</h2>
+    <button id="editor" class="secondary">Open process editor</button>
+
+    <p id="status"></p>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
