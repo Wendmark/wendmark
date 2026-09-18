@@ -22,14 +22,18 @@ const DisplayText = z.string().trim().min(1).max(2000)
  * authored label — never a value the user typed.
  */
 export const TargetSchema = z.strictObject({
-  /** CSS selector captured at record time. One anchor among several. */
-  selector: z.string().min(1),
+  /** CSS selectors captured at record time. One anchor among several. */
+  selectors: z.array(z.string().min(1)).min(1).max(5),
   /** ARIA role (explicit or implicit). */
   role: z.string().min(1).optional(),
   /** Accessible name: aria-label, associated <label>, etc. */
-  name: z.string().min(1).optional(),
+  name: z.string().min(1).max(200).optional(),
   /** Visible text content of the element. Never an input's value. */
-  text: z.string().min(1).optional(),
+  text: z.string().min(1).max(200).optional(),
+  /** Developer-provided test id (data-testid etc.). The most stable anchor when present. */
+  testId: z.string().min(1).optional(),
+  /** Label of the section the element sits in, e.g. "Delivery address". Tells apart same-named elements. */
+  context: z.string().min(1).max(200).optional(),
 })
 
 /** A step that points at an element the user should interact with. */
@@ -38,6 +42,8 @@ export const ActionStepSchema = z.strictObject({
   id: Id,
   text: DisplayText,
   target: TargetSchema,
+  /** Target is instance data (a product, an order), not fixed UI: highlight all similar elements. */
+  dynamic: z.boolean().default(false),
 })
 
 /** A step that only shows text. It has no target. */

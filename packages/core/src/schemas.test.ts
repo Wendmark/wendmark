@@ -5,7 +5,7 @@ const actionStep = {
   type: 'action',
   id: 's1',
   text: 'Click Subscribe',
-  target: { selector: '[data-testid="subscribe"]', role: 'button', name: 'Subscribe' },
+  target: { selectors: ['[data-testid="subscribe"]'], role: 'button', name: 'Subscribe' },
 } as const
 
 const instructionStep = {
@@ -25,7 +25,7 @@ describe('StepSchema', () => {
   it('parses an action step with a target', () => {
     const step = StepSchema.parse(actionStep)
     expect(step.type).toBe('action')
-    if (step.type === 'action') expect(step.target.selector).toBe('[data-testid="subscribe"]')
+    if (step.type === 'action') expect(step.target.selectors[0]).toBe('[data-testid="subscribe"]')
   })
 
   it('parses an instruction step without a target', () => {
@@ -43,7 +43,7 @@ describe('StepSchema', () => {
   })
 
   it('rejects an action target with an empty selector', () => {
-    const result = StepSchema.safeParse({ ...actionStep, target: { selector: '' } })
+    const result = StepSchema.safeParse({ ...actionStep, target: { selectors: [''] } })
     expect(result.success).toBe(false)
   })
 
@@ -61,6 +61,54 @@ describe('StepSchema', () => {
 
   it('rejects blank text', () => {
     expect(StepSchema.safeParse({ ...instructionStep, text: '   ' }).success).toBe(false)
+  })
+
+  it('rejects target text longer than 200 characters', () => {
+    const longText = 'a'.repeat(201)
+    const result = StepSchema.safeParse({
+      ...actionStep,
+      target: { ...actionStep.target, text: longText },
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects a target with no selectors', () => {
+    const result = StepSchema.safeParse({
+      ...actionStep,
+      target: { ...actionStep.target, selectors: [] },
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('keeps testId on a target', () => {
+    const step = StepSchema.parse({
+      ...actionStep,
+      target: { ...actionStep.target, testId: 'subscribe-button' },
+    })
+    expect(step).toMatchObject({ target: { testId: 'subscribe-button' } })
+  })
+
+  it('accepts a target with context', () => {
+    const step = StepSchema.parse({
+      ...actionStep,
+      target: { ...actionStep.target, context: 'Delivery address' },
+    })
+    expect(step).toMatchObject({ target: { context: 'Delivery address' } })
+  })
+
+  it('defaults dynamic to false on action steps', () => {
+    const step = StepSchema.parse(actionStep)
+    expect(step).toMatchObject({ dynamic: false })
+  })
+
+  it('keeps dynamic: true on action steps', () => {
+    const step = StepSchema.parse({ ...actionStep, dynamic: true })
+    expect(step).toMatchObject({ dynamic: true })
+  })
+
+  it('rejects dynamic on instruction steps', () => {
+    const result = StepSchema.safeParse({ ...instructionStep, dynamic: true })
+    expect(result.success).toBe(false)
   })
 })
 
