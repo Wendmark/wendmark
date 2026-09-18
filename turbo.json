@@ -1,0 +1,23 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "stream",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "@wendmark/snippet#build": {
+      "outputs": ["$TURBO_ROOT$/apps/portal/public/snippet.js"]
+    },
+    "@wendmark/portal#build": {
+      "dependsOn": ["^build", "@wendmark/snippet#build"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "typecheck": {},
+    "test": {},
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

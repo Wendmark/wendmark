@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // No DOM, no Node: core must run anywhere (snippet, portal server, workers).
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src"]
+}
