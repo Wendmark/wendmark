@@ -1,0 +1,8 @@
+legacy/
+pnpm-lock.yaml
+.turbo/
+.next/
+dist/
+coverage/
+apps/portal/public/snippet.js
+apps/portal/next-env.d.ts

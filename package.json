@@ -1,24 +1,35 @@
 {
-  "name": "wend",
+  "name": "wendmark",
   "private": true,
-  "version": "0.1.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build"
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=9 <10"
   },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.125.0",
-    "query-selector-shadow-dom": "^1.0.1",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+  "scripts": {
+    "dev": "turbo run dev --filter=@wendmark/portal --filter=@wendmark/playground --filter=@wendmark/snippet",
+    "build": "turbo run build",
+    "test": "turbo run test && vitest run --config scripts/vitest.config.ts",
+    "typecheck": "turbo run typecheck",
+    "lint": "eslint . --max-warnings 0",
+    "size": "turbo run build --filter=@wendmark/snippet && node scripts/size.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.0.0",
-    "@types/chrome": "^0.0.287",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "typescript": "~5.6.3",
-    "vite": "^6.0.0"
+    "@eslint/js": "^10",
+    "@types/node": "^22",
+    "eslint": "^10",
+    "eslint-config-prettier": "^10",
+    "eslint-import-resolver-typescript": "^4.4",
+    "eslint-plugin-boundaries": "^7.2",
+    "eslint-plugin-react-hooks": "^7",
+    "globals": "^17",
+    "prettier": "^3.9",
+    "turbo": "^2.10",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70",
+    "vitest": "^5"
   }
 }

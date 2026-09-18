@@ -1,0 +1,20 @@
+{
+  "name": "@wendmark/snippet",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": true,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@wendmark/core": "workspace:*",
+    "@wendmark/dom": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.5"
+  }
+}

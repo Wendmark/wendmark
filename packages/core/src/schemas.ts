@@ -1,0 +1,79 @@
+import { z } from 'zod'
+
+/**
+ * Wire and storage format for recorded flows. Shared by the snippet (player,
+ * recorder) and the portal. Pure data: no DOM, no network, no Node APIs.
+ *
+ * Objects are strict — unknown keys are rejected rather than silently dropped,
+ * so a step can never smuggle in fields another part of the system ignores.
+ * Breaking changes bump `schemaVersion`.
+ */
+
+export const SCHEMA_VERSION = 1
+
+const Id = z.string().min(1).max(128)
+
+/** Human-facing text shown to the end user. Authored, never user-typed data. */
+const DisplayText = z.string().trim().min(1).max(2000)
+
+/**
+ * How to find the element a step points at. Initial shape only: the full
+ * fingerprint is designed in @wendmark/dom. Every field is structural or an
+ * authored label — never a value the user typed.
+ */
+export const TargetSchema = z.strictObject({
+  /** CSS selector captured at record time. One anchor among several. */
+  selector: z.string().min(1),
+  /** ARIA role (explicit or implicit). */
+  role: z.string().min(1).optional(),
+  /** Accessible name: aria-label, associated <label>, etc. */
+  name: z.string().min(1).optional(),
+  /** Visible text content of the element. Never an input's value. */
+  text: z.string().min(1).optional(),
+})
+
+/** A step that points at an element the user should interact with. */
+export const ActionStepSchema = z.strictObject({
+  type: z.literal('action'),
+  id: Id,
+  text: DisplayText,
+  target: TargetSchema,
+})
+
+/** A step that only shows text. It has no target. */
+export const InstructionStepSchema = z.strictObject({
+  type: z.literal('instruction'),
+  id: Id,
+  text: DisplayText,
+})
+
+export const StepSchema = z.discriminatedUnion('type', [ActionStepSchema, InstructionStepSchema])
+
+export const FlowSchema = z
+  .strictObject({
+    schemaVersion: z.literal(SCHEMA_VERSION),
+    id: Id,
+    name: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(2000).optional(),
+    steps: z.array(StepSchema).min(1),
+  })
+  .superRefine((flow, ctx) => {
+    const seen = new Set<string>()
+    flow.steps.forEach((step, index) => {
+      if (seen.has(step.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Duplicate step id "${step.id}"`,
+          path: ['steps', index, 'id'],
+        })
+      }
+      seen.add(step.id)
+    })
+  })
+
+export type Target = z.infer<typeof TargetSchema>
+export type ActionStep = z.infer<typeof ActionStepSchema>
+export type InstructionStep = z.infer<typeof InstructionStepSchema>
+export type Step = z.infer<typeof StepSchema>
+export type StepType = Step['type']
+export type Flow = z.infer<typeof FlowSchema>
