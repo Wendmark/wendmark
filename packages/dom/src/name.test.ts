@@ -196,5 +196,18 @@ describe('getAccessibleName', () => {
       const el = renderTarget('<button id="target" title="Save your profile">Save</button>')
       expect(getAccessibleName(el)).toBe('Save')
     })
+
+    it('skips an empty <label> and falls through to the placeholder', () => {
+      const el = renderTarget(`
+        <label for="target">   </label>
+        <input id="target" placeholder="Search coffees">
+      `)
+      expect(getAccessibleName(el)).toBe('Search coffees')
+    })
+
+    it('skips an empty aria-label and falls through to the text', () => {
+      const el = renderTarget('<button id="target" aria-label="">Save changes</button>')
+      expect(getAccessibleName(el)).toBe('Save changes')
+    })
   })
 })

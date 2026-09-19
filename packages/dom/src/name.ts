@@ -1,3 +1,5 @@
+import { getRole } from './role'
+
 /** Collapse runs of whitespace into single spaces and trim the ends. */
 function clean(text: string | null | undefined): string {
   return (text ?? '').replace(/\s+/g, ' ').trim()
@@ -9,9 +11,24 @@ const FORM_CONTROLS = 'input, select, textarea'
 /** Input types whose value is a caption written by the page author. */
 const CAPTION_INPUT_TYPES = new Set(['button', 'submit', 'reset'])
 
-/** The text of a <label>, without the content of any form field inside it. */
-function labelText(label: Element): string {
-  const copy = label.cloneNode(true)
+/** Roles whose name comes from the text inside the element. */
+const NAME_FROM_CONTENT = new Set([
+  'button',
+  'link',
+  'heading',
+  'listitem',
+  'cell',
+  'tab',
+  'option',
+  'menuitem',
+  'checkbox',
+  'radio',
+  'switch',
+])
+
+/** The text inside an element, without the content of any form field inside it. */
+function textWithoutFields(element: Element): string {
+  const copy = element.cloneNode(true)
   if (!(copy instanceof Element)) return ''
   copy.querySelectorAll(FORM_CONTROLS).forEach((control) => control.remove())
   return clean(copy.textContent)
@@ -47,7 +64,7 @@ export function getAccessibleName(element: Element): string | null {
     element instanceof HTMLSelectElement ||
     element instanceof HTMLTextAreaElement
   ) {
-    const fromLabels = clean(Array.from(element.labels ?? [], labelText).join(' '))
+    const fromLabels = clean(Array.from(element.labels ?? [], textWithoutFields).join(' '))
     if (fromLabels) return fromLabels
   }
   if (element instanceof HTMLInputElement && CAPTION_INPUT_TYPES.has(element.type)) {
@@ -58,6 +75,19 @@ export function getAccessibleName(element: Element): string | null {
     const alt = clean(element.getAttribute('alt'))
     if (alt) return alt
   }
+
+  // 4. The element's own text, for roles that are named by their content.
+  const role = getRole(element)
+  if (role && NAME_FROM_CONTENT.has(role)) {
+    const text = textWithoutFields(element)
+    if (text) return text
+  }
+
+  // 5. Last resorts: title, then placeholder.
+  const title = clean(element.getAttribute('title'))
+  if (title) return title
+  const placeholder = clean(element.getAttribute('placeholder'))
+  if (placeholder) return placeholder
 
   return null
 }
