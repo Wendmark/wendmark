@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "@wendmark/core": "workspace:*"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.0"
   }
 }
