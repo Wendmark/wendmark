@@ -7,6 +7,11 @@
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "@wendmark/snippet#build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/core/src/**",
+        "$TURBO_ROOT$/packages/dom/src/**"
+      ],
       "outputs": ["$TURBO_ROOT$/apps/portal/public/snippet.js"]
     },
     "@wendmark/portal#build": {

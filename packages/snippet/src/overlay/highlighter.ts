@@ -15,6 +15,8 @@ export interface HighlightOptions {
 
 /** Rings one element at a time, points at it, and keeps both on it. */
 export interface Highlighter {
+  /** The shadow root our UI lives in, so other parts can draw there too. */
+  root: ShadowRoot
   highlight: (element: Element, options?: HighlightOptions) => void
   clear: () => void
   destroy: () => void
@@ -43,6 +45,7 @@ export function createHighlighter(
   }
 
   return {
+    root: overlay.root,
     highlight: (element: Element, highlightOptions?: HighlightOptions) => {
       stopTracking()
       if (highlightOptions?.label) cursor.setLabel(highlightOptions.label)

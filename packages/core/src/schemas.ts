@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SCHEMA_VERSION } from './version'
 
 /**
  * Wire and storage format for recorded flows. Shared by the snippet (player,
@@ -9,7 +10,7 @@ import { z } from 'zod'
  * Breaking changes bump `schemaVersion`.
  */
 
-export const SCHEMA_VERSION = 1
+export { SCHEMA_VERSION }
 
 const Id = z.string().min(1).max(128)
 
