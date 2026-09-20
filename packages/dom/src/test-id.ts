@@ -5,7 +5,7 @@ export interface TestId {
 }
 
 /** Attributes teams use for test ids, most common first. */
-const TEST_ID_ATTRIBUTES = [
+export const TEST_ID_ATTRIBUTES = [
   'data-testid',
   'data-test-id',
   'data-test',
