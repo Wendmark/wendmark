@@ -1,17 +1,14 @@
 /**
  * @wendmark/snippet — the script customers embed. Bundled to a single IIFE
- * exposing one global, `window.Wendmark`. Will host the player, recorder and
- * guidance UI (inside a shadow root). Depends on @wendmark/core and
+ * exposing one global, `window.Wendmark`. Depends on @wendmark/core and
  * @wendmark/dom only.
  *
- * Placeholder: no player, recorder or UI yet.
+ * So far: the overlay and the highlight ring. The cursor, player and
+ * recorder come next.
  */
-import type { Flow } from '@wendmark/core'
-import { DOM_PACKAGE } from '@wendmark/dom'
+export type { Flow } from '@wendmark/core'
 
-export type { Flow }
+export { createHighlighter, type Highlighter } from './overlay/highlighter'
+export { OVERLAY_TAG } from './overlay/overlay'
 
 export const version = '0.0.0'
-
-/** Placeholder so the dependency on @wendmark/dom is exercised by the build. */
-export const packages = ['@wendmark/snippet', DOM_PACKAGE] as const
