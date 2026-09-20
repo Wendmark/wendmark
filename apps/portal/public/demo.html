@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Wendmark overlay demo</title>
+    <style>
+      :root { font-family: system-ui, sans-serif; color: #2b2118; }
+      body { margin: 0; background: #faf7f2; }
+      header { display: flex; gap: 2rem; padding: 1rem 2rem; background: #fff; border-bottom: 1px solid #e8dfd3; }
+      .brand { font-weight: 800; color: #8a4b24; }
+      main { max-width: 820px; margin: 0 auto; padding: 2rem; }
+      .form { display: grid; gap: 1rem; max-width: 420px; background: #fff; padding: 1.5rem; border: 1px solid #e8dfd3; border-radius: 10px; }
+      label { display: grid; gap: .3rem; font-weight: 600; }
+      input, select { font: inherit; padding: .5rem; border: 1px solid #e8dfd3; border-radius: 6px; }
+      button { font: inherit; border: none; border-radius: 6px; padding: .55rem 1rem; background: #8a4b24; color: #fff; cursor: pointer; }
+      .spacer { height: 60vh; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="brand">Fika</span>
+      <nav><a href="#shop">Shop</a> <a href="#orders">Orders</a> <a href="#profile">Profile</a></nav>
+    </header>
+    <main>
+      <h1 id="profile-heading">Profile</h1>
+      <p>
+        <button id="next-target" type="button">Highlight the next thing</button>
+        <button id="clear-target" type="button">Clear</button>
+      </p>
+      <form class="form">
+        <label>Name <input name="name" value="Alex Lindqvist" /></label>
+        <label>Email <input id="email-field" name="email" value="alex@example.com" /></label>
+        <label>Plan
+          <select name="plan"><option>One bag / month</option><option>Two bags / month</option></select>
+        </label>
+        <button id="save" type="button" data-testid="save-profile">Save changes</button>
+      </form>
+      <div class="spacer"></div>
+      <button id="far-button">A button further down the page</button>
+    </main>
+
+    <script src="/snippet.js"></script>
+    <script>
+      // The snippet's IIFE exposes exactly one global: window.Wendmark.
+      // A dev harness for the overlay, ring and cursor. Not part of the product.
+      const h = Wendmark.createHighlighter(document, window, {
+        onLost: (el) => console.log('target disappeared', el),
+      })
+      window.demo = h
+
+      const targets = [
+        ['save', 'Click Save changes'],
+        ['far-button', 'Now click this one'],
+        ['email-field', 'Type your email'],
+      ]
+      let at = 0
+
+      function show() {
+        const [id, label] = targets[at]
+        const element = document.getElementById(id)
+        element.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        h.highlight(element, { label })
+      }
+
+      document.getElementById('next-target').addEventListener('click', () => {
+        at = (at + 1) % targets.length
+        show()
+      })
+      document.getElementById('clear-target').addEventListener('click', () => h.clear())
+      show()
+    </script>
+  </body>
+</html>
