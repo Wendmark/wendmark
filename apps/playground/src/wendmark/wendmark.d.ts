@@ -9,6 +9,7 @@ declare global {
   interface Window {
     Wendmark?: {
       start: (flow: unknown) => void
+      resume: (flows: unknown) => unknown
       stop: () => void
     }
   }

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link, usePathname } from './router'
 import { changeGrindFlow } from './wendmark/flows'
 import { OrdersPage } from './pages/OrdersPage'
@@ -14,6 +15,11 @@ const routes = [
 
 export function App() {
   const pathname = usePathname()
+
+  // If the user reloaded mid-flow, pick guidance up where they left off.
+  useEffect(() => {
+    window.Wendmark?.resume([changeGrindFlow])
+  }, [])
   const current = routes.find((r) => r.path === pathname)
 
   return (
