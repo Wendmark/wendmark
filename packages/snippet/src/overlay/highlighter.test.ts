@@ -22,6 +22,21 @@ function twoButtons(): [Element, Element] {
   return [a, b]
 }
 
+function cursorStyle(): CSSStyleDeclaration {
+  const el = document
+    .querySelector(OVERLAY_TAG)
+    ?.shadowRoot?.querySelector('[data-wendmark="cursor"]')
+  if (!el) throw new Error('no cursor in the overlay')
+  return (el as HTMLElement).style
+}
+
+function chipText(): string {
+  const el = document
+    .querySelector(OVERLAY_TAG)
+    ?.shadowRoot?.querySelector('[data-wendmark="chip"]')
+  return el?.textContent ?? ''
+}
+
 function ringStyle(): CSSStyleDeclaration {
   const box = document
     .querySelector(OVERLAY_TAG)
@@ -108,5 +123,45 @@ describe('createHighlighter', () => {
     a.remove()
     vi.advanceTimersByTime(POLL_MS * 3)
     expect(onLost).not.toHaveBeenCalled()
+  })
+
+  it('points the cursor at the target as well as ringing it', () => {
+    const [a] = twoButtons()
+    create().highlight(a)
+    expect(cursorStyle().left).toBe('60px')
+    expect(cursorStyle().top).toBe('25px')
+    expect(cursorStyle().display).not.toBe('none')
+  })
+
+  it('shows the step wording next to the cursor', () => {
+    const [a] = twoButtons()
+    create().highlight(a, { label: 'Click Save changes' })
+    expect(chipText()).toBe('Click Save changes')
+  })
+
+  it('keeps the cursor with the target as the page moves', () => {
+    vi.useFakeTimers()
+    const [a] = twoButtons()
+    create().highlight(a)
+    setRect(a, { left: 10, top: 500, width: 100, height: 30 })
+    vi.advanceTimersByTime(POLL_MS)
+    expect(cursorStyle().top).toBe('515px')
+  })
+
+  it('hides the cursor when the target disappears', () => {
+    vi.useFakeTimers()
+    const [a] = twoButtons()
+    create().highlight(a)
+    a.remove()
+    vi.advanceTimersByTime(POLL_MS * 3)
+    expect(cursorStyle().display).toBe('none')
+  })
+
+  it('hides the cursor on clear', () => {
+    const [a] = twoButtons()
+    const h = create()
+    h.highlight(a)
+    h.clear()
+    expect(cursorStyle().display).toBe('none')
   })
 })
