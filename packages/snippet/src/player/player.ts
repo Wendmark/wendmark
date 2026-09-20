@@ -2,6 +2,7 @@ import type { Flow } from '@wendmark/core'
 import { resolve } from '@wendmark/dom'
 import { createHighlighter } from '../overlay/highlighter'
 import { createPanel } from './panel'
+import { clearProgress, saveProgress } from './progress'
 
 /** Shown while a step's target cannot be found on the page. */
 const NOT_FOUND_STATUS =
@@ -24,13 +25,26 @@ export const SLOW_INTERVAL_MS = 1200
 export interface PlayerOptions {
   doc?: Document
   view?: Window
+  /** Where to start, when picking a flow up after a page load. */
+  startIndex?: number
+  /** Where progress is remembered. Defaults to the page's session storage. */
+  storage?: Storage
   onFinish?: () => void
   onStop?: () => void
 }
 
 /** A flow being played. */
 export interface Player {
-  stop: () => void
+  stop: (options?: { keepProgress?: boolean }) => void
+}
+
+/** The page's session storage, or undefined where the browser refuses it. */
+function safeSessionStorage(view: Window): Storage | undefined {
+  try {
+    return view.sessionStorage
+  } catch {
+    return undefined
+  }
 }
 
 /** Starts guiding a user through a flow. */
@@ -38,7 +52,9 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
   const doc = options.doc ?? document
   const view = options.view ?? window
 
-  let index = 0
+  const storage = options.storage ?? safeSessionStorage(view)
+
+  let index = options.startIndex ?? 0
   let targets: Element[] = []
   let running = true
   let attempt = 0
@@ -96,6 +112,9 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
     }
 
     targets = []
+    // Remembered before anything else, so a click that navigates away still
+    // leaves the next page knowing where we were.
+    saveProgress(storage, { flowId: flow.id, stepIndex: index })
     panel.show({
       stepNumber: index + 1,
       total: flow.steps.length,
@@ -161,9 +180,10 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
     else showStep()
   }
 
-  function teardown(): void {
+  function teardown(keepProgress = false): void {
     if (!running) return
     running = false
+    if (!keepProgress) clearProgress(storage)
     stopRetrying()
     targets = []
     doc.removeEventListener('click', onClick, true)
@@ -176,8 +196,8 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
     options.onFinish?.()
   }
 
-  function stop(): void {
-    teardown()
+  function stop(stopOptions: { keepProgress?: boolean } = {}): void {
+    teardown(stopOptions.keepProgress === true)
     options.onStop?.()
   }
 
