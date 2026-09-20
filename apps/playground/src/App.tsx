@@ -1,4 +1,5 @@
 import { Link, usePathname } from './router'
+import { changeGrindFlow } from './wendmark/flows'
 import { OrdersPage } from './pages/OrdersPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { ShopPage } from './pages/ShopPage'
@@ -21,6 +22,13 @@ export function App() {
         <Link to="/" className="brand">
           Fika
         </Link>
+        <button
+          type="button"
+          className="guide-button"
+          onClick={() => window.Wendmark?.start(changeGrindFlow)}
+        >
+          Guide me
+        </button>
         <nav aria-label="Main">
           {routes.map((r) => (
             <Link
