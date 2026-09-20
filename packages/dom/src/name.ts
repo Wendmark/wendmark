@@ -1,12 +1,5 @@
 import { getRole } from './role'
-
-/** Collapse runs of whitespace into single spaces and trim the ends. */
-function clean(text: string | null | undefined): string {
-  return (text ?? '').replace(/\s+/g, ' ').trim()
-}
-
-/** Form fields whose own content must never end up in a name. */
-const FORM_CONTROLS = 'input, select, textarea'
+import { clean, textWithoutFields } from './text'
 
 /** Input types whose value is a caption written by the page author. */
 const CAPTION_INPUT_TYPES = new Set(['button', 'submit', 'reset'])
@@ -25,14 +18,6 @@ const NAME_FROM_CONTENT = new Set([
   'radio',
   'switch',
 ])
-
-/** The text inside an element, without the content of any form field inside it. */
-function textWithoutFields(element: Element): string {
-  const copy = element.cloneNode(true)
-  if (!(copy instanceof Element)) return ''
-  copy.querySelectorAll(FORM_CONTROLS).forEach((control) => control.remove())
-  return clean(copy.textContent)
-}
 
 /**
  * The accessible name of an element: what it is called (what a screen reader
