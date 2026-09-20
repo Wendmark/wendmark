@@ -11,3 +11,4 @@ export {
   FlowSchema,
 } from './schemas'
 export type { Target, ActionStep, InstructionStep, Step, StepType, Flow } from './schemas'
+export { looksLikeFlow } from './guard'
