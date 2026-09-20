@@ -1,0 +1,65 @@
+import type { Flow } from '@wendmark/core'
+import { afterEach, describe, expect, it } from 'vitest'
+import { OVERLAY_TAG } from './overlay/overlay'
+import { setRect } from './test-utils'
+import { start, stop } from './index'
+
+const flow: Flow = {
+  schemaVersion: 1,
+  id: 'save-profile',
+  name: 'Save your profile',
+  steps: [
+    {
+      type: 'action',
+      id: 's1',
+      text: 'Click Save changes',
+      dynamic: false,
+      target: { selectors: ['#save'], role: 'button', name: 'Save changes' },
+    },
+  ],
+}
+
+function renderPage(): void {
+  document.body.innerHTML = '<button id="save" type="button">Save changes</button>'
+  setRect(document.getElementById('save') as Element, { left: 0, top: 0, width: 90, height: 24 })
+}
+
+afterEach(() => {
+  stop()
+  document.body.innerHTML = ''
+})
+
+describe('the snippet API', () => {
+  it('starts guiding from a flow', () => {
+    renderPage()
+    start(flow)
+    expect(document.querySelector(OVERLAY_TAG)).not.toBeNull()
+  })
+
+  it('stops guiding and leaves no trace', () => {
+    renderPage()
+    start(flow)
+    stop()
+    expect(document.querySelector(OVERLAY_TAG)).toBeNull()
+  })
+
+  it('replaces a flow already running instead of stacking them', () => {
+    renderPage()
+    start(flow)
+    start(flow)
+    expect(document.querySelectorAll(OVERLAY_TAG)).toHaveLength(1)
+  })
+
+  it('refuses a flow that does not fit the schema', () => {
+    renderPage()
+    expect(() => start({ id: 'nope' } as unknown as Flow)).toThrow(/flow/i)
+    expect(document.querySelector(OVERLAY_TAG)).toBeNull()
+  })
+
+  it('does nothing when stopping twice', () => {
+    renderPage()
+    start(flow)
+    stop()
+    expect(() => stop()).not.toThrow()
+  })
+})
