@@ -3,12 +3,13 @@
  * exposing one global, `window.Wendmark`. Depends on @wendmark/core and
  * @wendmark/dom only.
  *
- * So far: the overlay and the highlight ring. The cursor, player and
- * recorder come next.
+ * So far: the overlay, the highlight ring and the teaching cursor. The
+ * player and recorder come next.
  */
 export type { Flow } from '@wendmark/core'
 
 export { createHighlighter, type Highlighter } from './overlay/highlighter'
 export { OVERLAY_TAG } from './overlay/overlay'
+export { prefersReducedMotion } from './overlay/cursor'
 
 export const version = '0.0.0'
