@@ -58,8 +58,11 @@ The snippet runs inside customers' apps, so it must be a polite guest.
 - **No framework.** Plain TypeScript and DOM APIs. React, Preact, Vue, Svelte,
   Lit and similar are lint errors in the snippet.
 - **Size budget: 30 KB gzipped**, enforced by `pnpm size` in CI. Check the cost
-  of every dependency. Importing `@wendmark/core` schemas pulls in zod. Prefer
-  type-only imports, or `zod/mini` if runtime validation is needed.
+  of every dependency. Importing anything from `@wendmark/core`'s root pulls in
+  **zod (~95 KB gzipped)**, because building a schema is a top-level call the
+  bundler cannot drop. Use type-only imports, or the zero-dependency
+  `@wendmark/core/guard` entry point for runtime checks in the browser. The
+  full zod schemas belong on the server, where size does not matter.
 - **Never record typed values.** The recorder captures structure and authored
   labels (role, accessible name, visible text of non-input elements, stable
   attributes). It must never read `.value`, `textContent` of form fields,
