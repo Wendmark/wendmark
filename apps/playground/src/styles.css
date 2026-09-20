@@ -167,3 +167,8 @@ button {
 .notice {
   color: #2f6b2f;
 }
+
+.guide-button {
+  margin-left: auto;
+  background: #5a48e8;
+}
