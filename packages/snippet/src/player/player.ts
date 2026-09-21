@@ -1,6 +1,7 @@
 import type { Flow } from '@wendmark/core'
 import { prettyPath, resolve, urlMatches } from '@wendmark/dom'
 import { createHighlighter } from '../overlay/highlighter'
+import { scrollIntoViewIfNeeded } from '../overlay/scroll'
 import { createPanel } from './panel'
 import { clearProgress, saveProgress } from './progress'
 
@@ -152,6 +153,7 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
       stopRetrying()
       targets = [result.element]
       panel.setStatus('')
+      scrollIntoViewIfNeeded(result.element, view)
       highlighter.highlight(result.element, { label: step.text })
       return
     }
@@ -166,6 +168,7 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
         stopRetrying()
         targets = result.elements
         panel.setStatus(CHOOSE_STATUS)
+        scrollIntoViewIfNeeded(group, view)
         highlighter.highlight(group, { label: step.text })
         return
       }

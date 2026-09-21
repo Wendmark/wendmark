@@ -1,5 +1,5 @@
 import type { ActionStep, Flow, Target } from '@wendmark/core'
-import { fingerprint, findInteractiveTarget, getRole } from '@wendmark/dom'
+import { fingerprint, findInteractiveTarget, getRole, isInteractive } from '@wendmark/dom'
 import { createOverlay, OVERLAY_TAG } from '../overlay/overlay'
 import { createRecordingBadge } from './badge'
 
@@ -61,6 +61,7 @@ function isWorthRecording(element: Element): boolean {
   if (element === element.ownerDocument.body) return false
   if (element === element.ownerDocument.documentElement) return false
   if (getRole(element) !== null) return true
+  if (isInteractive(element)) return true
   return element.matches('input, select, textarea, button, a[href]')
 }
 

@@ -135,4 +135,19 @@ describe('recording a process', () => {
     recording = null
     expect(flow.steps).toHaveLength(0)
   })
+
+  it('records a clickable element that only a pointer cursor gives away', () => {
+    document.body.innerHTML = `
+      <div id="card" style="cursor: pointer"><span id="card-text">FK-10421</span></div>
+    `
+    recording = startRecording({ doc: document, view: window })
+    click('card-text')
+
+    const flow = recording.stop()
+    recording = null
+    expect(flow.steps).toHaveLength(1)
+    const [step] = flow.steps
+    if (step?.type !== 'action') throw new Error('expected an action step')
+    expect(step.target.selectors.join(' ')).toContain('card')
+  })
 })
