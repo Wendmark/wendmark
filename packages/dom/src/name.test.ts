@@ -211,3 +211,15 @@ describe('getAccessibleName', () => {
     })
   })
 })
+
+describe('form fields never lend their content', () => {
+  it('ignores the options of a select', () => {
+    const el = renderTarget(`
+      <label>Plan
+        <select id="target"><option>One bag / month</option><option>Two bags / month</option></select>
+      </label>
+    `)
+    expect(getAccessibleName(el)).toBe('Plan')
+    expect(getAccessibleName(el)).not.toContain('bag')
+  })
+})

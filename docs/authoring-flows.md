@@ -16,25 +16,30 @@ For an app you cannot edit, paste the contents of `apps/portal/public/snippet.js
 into the browser console instead. Either way you end up with one global,
 `window.Wendmark`.
 
-## 2. Capture fingerprints by clicking
-
-Paste this into the console of the app, then click through the process once.
-It records nothing but structure and authored labels — never what you type.
+## 2. Record it by clicking through it
 
 ```js
-const captured = []
-const capture = (event) => {
-  const target = Wendmark.findInteractiveTarget(event.target)
-  captured.push(Wendmark.fingerprint(target))
-  console.log(JSON.stringify(captured, null, 2))
-}
-document.addEventListener('click', capture, { capture: true })
-
-// when you are done:
-// document.removeEventListener('click', capture, true)
+Wendmark.record({ name: 'Change your grind' })
+// …click through the process. A "Recording" badge is shown the whole time.
+const flow = Wendmark.stopRecording()
+Wendmark.start(flow) // play it back immediately
 ```
 
-Each entry is a `target` for a step.
+The recorder captures structure and authored labels only: roles, names,
+selectors, the section an element sits in and the page it was on. It never
+records what you type, choose or tick.
+
+What it gives you is a first draft. Expect to edit:
+
+- **The wording.** "Click Save changes" is generated from the element; you can
+  say something better.
+- **Misclicks.** Delete steps you did not mean.
+- **`dynamic: true`** on steps that target one of the user's own items.
+- **Instruction steps**, added by hand where the user needs to read something
+  rather than click.
+
+In Fika, the **Record** button does this for you: click it, click through a
+process, then click **Stop and replay**.
 
 ## 3. Assemble the flow
 
