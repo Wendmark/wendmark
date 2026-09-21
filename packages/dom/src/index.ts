@@ -10,6 +10,7 @@ export { findInteractiveTarget, isInteractive } from './interactive'
 export { getAccessibleName } from './name'
 export { getRole } from './role'
 export { resolve, type Resolution } from './resolve'
+export { prettyPath, urlMatches } from './url'
 export { isProbablyVisible } from './visible'
 
 export const DOM_PACKAGE = '@wendmark/dom'

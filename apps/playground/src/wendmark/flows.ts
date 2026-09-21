@@ -34,6 +34,9 @@ export const changeGrindFlow = {
         role: 'combobox',
         name: 'Grind',
         context: 'Profile',
+        // A hint, not a gate: if the user is elsewhere, guidance says where
+        // to go instead of just "can't find this step".
+        url: 'http://localhost:5173/profile',
       },
     },
     {
@@ -52,6 +55,7 @@ export const changeGrindFlow = {
         name: 'Save changes',
         text: 'Save changes',
         context: 'Profile',
+        url: 'http://localhost:5173/profile',
       },
     },
   ],
