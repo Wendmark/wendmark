@@ -1,3 +1,5 @@
+import { parentAcrossShadow } from './shadow'
+
 /** How far up to look for a hidden ancestor. */
 const MAX_ANCESTORS = 50
 
@@ -18,7 +20,8 @@ export function isProbablyVisible(element: Element): boolean {
   for (let level = 0; current && level < MAX_ANCESTORS; level++) {
     const style = view.getComputedStyle(current)
     if (style.display === 'none' || style.visibility === 'hidden') return false
-    current = current.parentElement
+    // A hidden web component hides everything inside it.
+    current = parentAcrossShadow(current)
   }
   return true
 }
