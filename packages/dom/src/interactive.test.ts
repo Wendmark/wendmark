@@ -98,4 +98,27 @@ describe('findInteractiveTarget', () => {
     `)
     expect(findInteractiveTarget(clicked)).toBe(byId('expected'))
   })
+
+  it('recognises a clickable element by its pointer cursor', () => {
+    const clicked = renderTarget(`
+      <div id="expected" style="cursor: pointer"><span id="target">Open this order</span></div>
+    `)
+    expect(findInteractiveTarget(clicked)).toBe(byId('expected'))
+  })
+
+  it('picks the card, not the text inside it, when both show a pointer', () => {
+    // The cursor is inherited, so everything inside a clickable card looks
+    // clickable. The outermost element with the pointer is the control.
+    const clicked = renderTarget(`
+      <div id="expected" style="cursor: pointer">
+        <div style="cursor: pointer"><span id="target">FK-10421</span></div>
+      </div>
+    `)
+    expect(findInteractiveTarget(clicked)).toBe(byId('expected'))
+  })
+
+  it('ignores a pointer cursor on plain text with no click behaviour nearby', () => {
+    const clicked = renderTarget('<p><span id="target">Freshly roasted</span></p>')
+    expect(findInteractiveTarget(clicked)).toBe(clicked)
+  })
 })
