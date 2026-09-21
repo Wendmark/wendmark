@@ -23,7 +23,7 @@ function looksLikeStep(value: unknown): value is Step {
 
   if (value.type === 'instruction') return true
 
-  if (value.type === 'action') {
+  if (value.type === 'action' || value.type === 'input') {
     const target = value.target
     if (!isRecord(target)) return false
     return Array.isArray(target.selectors) && target.selectors.every(isNonEmptyString)

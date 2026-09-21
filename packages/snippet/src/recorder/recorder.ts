@@ -1,4 +1,4 @@
-import type { ActionStep, Flow, Target } from '@wendmark/core'
+import type { ActionStep, Flow, InputStep, Target } from '@wendmark/core'
 import { fingerprint, findInteractiveTarget, getRole, isInteractive } from '@wendmark/dom'
 import { createOverlay, OVERLAY_TAG } from '../overlay/overlay'
 import { createRecordingBadge } from './badge'
@@ -22,6 +22,25 @@ export interface Recording {
  * A first draft of the instruction, from what the element is and what it is
  * called. Rough on purpose: a person rewrites these afterwards.
  */
+/** The wording for a step where the user fills something in. */
+function describeInput(target: Target): string {
+  const name = target.name ?? target.text
+  if (!name) return 'Fill this in'
+
+  switch (target.role) {
+    case 'combobox':
+    case 'listbox':
+      return `Choose a ${name}`
+    case 'checkbox':
+    case 'switch':
+      return `Set ${name}`
+    case 'radio':
+      return `Choose ${name}`
+    default:
+      return `Enter your ${name}`
+  }
+}
+
 function describe(target: Target): string {
   const name = target.name ?? target.text
   if (!name) return 'Click here'
@@ -70,7 +89,7 @@ export function startRecording(options: RecordingOptions = {}): Recording {
   const doc = options.doc ?? document
   const view = options.view ?? window
 
-  const steps: ActionStep[] = []
+  const steps: (ActionStep | InputStep)[] = []
   let lastElement: Element | null = null
   let recording = true
 
@@ -103,12 +122,39 @@ export function startRecording(options: RecordingOptions = {}): Recording {
     })
   }
 
+  /**
+   * The user filled something in. That is a step of its own, and usually the
+   * same element we just recorded a click on, so the click is replaced.
+   * What they put in the field is never read.
+   */
+  function onChange(event: Event): void {
+    if (!recording || !(event.target instanceof Element)) return
+    if (event.composedPath().some(isOurs)) return
+
+    const element = findInteractiveTarget(event.target)
+    if (!isWorthRecording(element)) return
+
+    const target: Target = { ...fingerprint(element), url: view.location.href }
+    const last = steps[steps.length - 1]
+    if (last && lastElement === element) steps.pop()
+
+    lastElement = element
+    steps.push({
+      type: 'input',
+      id: `s${steps.length + 1}`,
+      text: describeInput(target),
+      target,
+    })
+  }
+
   doc.addEventListener('click', onClick, { capture: true, passive: true })
+  doc.addEventListener('change', onChange, { capture: true, passive: true })
 
   return {
     stop: (): Flow => {
       recording = false
       doc.removeEventListener('click', onClick, true)
+      doc.removeEventListener('change', onChange, true)
       badge.destroy()
       overlay.destroy()
       return {
