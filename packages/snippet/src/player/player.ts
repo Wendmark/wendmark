@@ -100,9 +100,24 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
    */
   function onClick(event: Event): void {
     if (!running || targets.length === 0) return
+    if (flow.steps[index]?.type !== 'action') return
     const clicked = event.target
     if (!(clicked instanceof Node)) return
     const hit = targets.some((element) => element === clicked || element.contains(clicked))
+    if (hit) advance()
+  }
+
+  /**
+   * An input step is done when the user has changed the field. The `change`
+   * event says that happened; it never tells us, and we never ask, what they
+   * put in it.
+   */
+  function onChange(event: Event): void {
+    if (!running || targets.length === 0) return
+    if (flow.steps[index]?.type !== 'input') return
+    const changed = event.target
+    if (!(changed instanceof Node)) return
+    const hit = targets.some((element) => element === changed || element.contains(changed))
     if (hit) advance()
   }
 
@@ -125,12 +140,14 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
       stepNumber: index + 1,
       total: flow.steps.length,
       text: step.text,
-      // An instruction step has nothing to click on the page, so the panel
-      // carries the way forward.
+      // An instruction step has nothing to click on the page, and an input
+      // step may be finished without leaving the field, so the panel carries
+      // a way forward for both.
       ...(step.type === 'instruction' ? { primary: 'Got it' } : {}),
+      ...(step.type === 'input' ? { primary: 'Done' } : {}),
     })
 
-    if (step.type !== 'action') {
+    if (step.type === 'instruction') {
       highlighter.clear()
       return
     }
@@ -145,7 +162,7 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
   function lookForTarget(): void {
     if (!running) return
     const step = flow.steps[index]
-    if (!step || step.type !== 'action') return
+    if (!step || step.type === 'instruction') return
 
     const result = resolve(step.target, doc)
 
@@ -162,7 +179,7 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
     // data ("pick one of your coffees") that is the right answer: ring the
     // group and let them choose. For fixed UI it means something is unclear,
     // so keep looking rather than guessing.
-    if (result.status === 'ambiguous' && step.dynamic) {
+    if (result.status === 'ambiguous' && step.type === 'action' && step.dynamic) {
       const group = commonAncestor(result.elements)
       if (group) {
         stopRetrying()
@@ -203,6 +220,7 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
     stopRetrying()
     targets = []
     doc.removeEventListener('click', onClick, true)
+    doc.removeEventListener('change', onChange, true)
     panel.destroy()
     highlighter.destroy()
   }
@@ -218,6 +236,7 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
   }
 
   doc.addEventListener('click', onClick, true)
+  doc.addEventListener('change', onChange, true)
   showStep()
 
   return { stop }
