@@ -55,6 +55,20 @@ describe('StepSchema', () => {
     expect(result.success).toBe(false)
   })
 
+  it('accepts a target with the page it was recorded on', () => {
+    const step = StepSchema.parse({
+      ...actionStep,
+      target: { ...actionStep.target, url: 'https://fika.test/profile' },
+    })
+    expect(step).toMatchObject({ target: { url: 'https://fika.test/profile' } })
+  })
+
+  it('still accepts a flow written before targets had a url', () => {
+    // Adding an optional field must not invalidate flows already recorded,
+    // which is why SCHEMA_VERSION stays at 1.
+    expect(StepSchema.safeParse(actionStep).success).toBe(true)
+  })
+
   it('rejects an unknown step type', () => {
     expect(StepSchema.safeParse({ ...instructionStep, type: 'click' }).success).toBe(false)
   })

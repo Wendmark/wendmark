@@ -35,6 +35,8 @@ export const TargetSchema = z.strictObject({
   testId: z.string().min(1).optional(),
   /** Label of the section the element sits in, e.g. "Delivery address". Tells apart same-named elements. */
   context: z.string().min(1).max(200).optional(),
+  /** The page this step was recorded on. A hint for "go here", never a gate. */
+  url: z.string().min(1).max(2000).optional(),
 })
 
 /** A step that points at an element the user should interact with. */
