@@ -49,6 +49,18 @@ export const ActionStepSchema = z.strictObject({
   dynamic: z.boolean().default(false),
 })
 
+/**
+ * A step where the user fills something in: a text field, a dropdown, a
+ * checkbox. It points at the field, and completes when the user has changed
+ * it — what they put in is never recorded or checked.
+ */
+export const InputStepSchema = z.strictObject({
+  type: z.literal('input'),
+  id: Id,
+  text: DisplayText,
+  target: TargetSchema,
+})
+
 /** A step that only shows text. It has no target. */
 export const InstructionStepSchema = z.strictObject({
   type: z.literal('instruction'),
@@ -56,7 +68,11 @@ export const InstructionStepSchema = z.strictObject({
   text: DisplayText,
 })
 
-export const StepSchema = z.discriminatedUnion('type', [ActionStepSchema, InstructionStepSchema])
+export const StepSchema = z.discriminatedUnion('type', [
+  ActionStepSchema,
+  InputStepSchema,
+  InstructionStepSchema,
+])
 
 export const FlowSchema = z
   .strictObject({
@@ -82,6 +98,7 @@ export const FlowSchema = z
 
 export type Target = z.infer<typeof TargetSchema>
 export type ActionStep = z.infer<typeof ActionStepSchema>
+export type InputStep = z.infer<typeof InputStepSchema>
 export type InstructionStep = z.infer<typeof InstructionStepSchema>
 export type Step = z.infer<typeof StepSchema>
 export type StepType = Step['type']

@@ -68,8 +68,9 @@ Rules worth knowing:
 - **`dynamic: true`** when the target is one of the user's own items (an order,
   a coffee, a row) rather than fixed UI. The player then highlights the whole
   group and lets the user choose.
-- **Instruction steps have no target.** Use them for "read this" or "type your
-  details, then continue".
+- **Three kinds of step.** `action` (the user clicks something), `input` (the
+  user fills a field in — it completes when they change it, and what they put
+  in is never recorded), and `instruction` (text only, no target).
 - **Less can be more.** `role` plus `name` often resolves better than a long
   selector, because it survives restyling. Trim anything that looks generated.
 

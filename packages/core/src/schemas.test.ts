@@ -69,6 +69,32 @@ describe('StepSchema', () => {
     expect(StepSchema.safeParse(actionStep).success).toBe(true)
   })
 
+  it('parses an input step, which points at a field', () => {
+    const step = StepSchema.parse({
+      type: 'input',
+      id: 'i1',
+      text: 'Enter your email',
+      target: { selectors: ['input[name="email"]'], role: 'textbox', name: 'Email' },
+    })
+    expect(step.type).toBe('input')
+  })
+
+  it('rejects an input step with no field to point at', () => {
+    const result = StepSchema.safeParse({ type: 'input', id: 'i1', text: 'Enter your email' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects anything that looks like a recorded value on an input step', () => {
+    const result = StepSchema.safeParse({
+      type: 'input',
+      id: 'i1',
+      text: 'Enter your email',
+      value: 'alex@example.com',
+      target: { selectors: ['input'] },
+    })
+    expect(result.success).toBe(false)
+  })
+
   it('rejects an unknown step type', () => {
     expect(StepSchema.safeParse({ ...instructionStep, type: 'click' }).success).toBe(false)
   })
