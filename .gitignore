@@ -30,3 +30,5 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+apps/portal/AGENTS.md
+apps/portal/CLAUDE.md
