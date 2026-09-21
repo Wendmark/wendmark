@@ -6,9 +6,18 @@ export {
   SCHEMA_VERSION,
   TargetSchema,
   ActionStepSchema,
+  InputStepSchema,
   InstructionStepSchema,
   StepSchema,
   FlowSchema,
 } from './schemas'
-export type { Target, ActionStep, InstructionStep, Step, StepType, Flow } from './schemas'
+export type {
+  Target,
+  ActionStep,
+  InputStep,
+  InstructionStep,
+  Step,
+  StepType,
+  Flow,
+} from './schemas'
 export { looksLikeFlow } from './guard'
