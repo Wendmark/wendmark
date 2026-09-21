@@ -1,5 +1,5 @@
 import type { Flow } from '@wendmark/core'
-import { resolve } from '@wendmark/dom'
+import { prettyPath, resolve, urlMatches } from '@wendmark/dom'
 import { createHighlighter } from '../overlay/highlighter'
 import { createPanel } from './panel'
 import { clearProgress, saveProgress } from './progress'
@@ -7,6 +7,11 @@ import { clearProgress, saveProgress } from './progress'
 /** Shown while a step's target cannot be found on the page. */
 const NOT_FOUND_STATUS =
   "Can't find this step on the page yet. Skip it, or set the page up and it will continue."
+
+/** Shown when the step lives on a page the user is not on. */
+function wrongPageStatus(url: string): string {
+  return `This step is on ${prettyPath(url)}. Go there and guidance will continue.`
+}
 
 /** Shown on a step where the user picks one item out of several. */
 const CHOOSE_STATUS = 'Choose any one of the highlighted items.'
@@ -167,7 +172,15 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
     }
 
     highlighter.clear()
-    panel.setStatus(attempt < QUICK_ATTEMPTS ? SEARCHING_STATUS : NOT_FOUND_STATUS)
+    // When the step names a different page, say so straight away: there is
+    // no point looking quietly for something that cannot be here.
+    const recordedUrl = step.target.url
+    const wrongPage = recordedUrl !== undefined && !urlMatches(recordedUrl, view.location.href)
+    if (wrongPage && recordedUrl !== undefined) {
+      panel.setStatus(wrongPageStatus(recordedUrl))
+    } else {
+      panel.setStatus(attempt < QUICK_ATTEMPTS ? SEARCHING_STATUS : NOT_FOUND_STATUS)
+    }
     const wait = attempt < QUICK_ATTEMPTS ? QUICK_INTERVAL_MS : SLOW_INTERVAL_MS
     attempt += 1
     retryTimer = view.setTimeout(lookForTarget, wait)
