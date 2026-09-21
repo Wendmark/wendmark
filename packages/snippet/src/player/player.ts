@@ -9,6 +9,17 @@ import { clearProgress, saveProgress } from './progress'
 const NOT_FOUND_STATUS =
   "Can't find this step on the page yet. Skip it, or set the page up and it will continue."
 
+/**
+ * The element the user really touched. A click inside a web component is
+ * reported as the component itself; the composed path starts with the real
+ * element.
+ */
+function deepTarget(event: Event): Node | null {
+  const [first] = event.composedPath()
+  if (first instanceof Node) return first
+  return event.target instanceof Node ? event.target : null
+}
+
 /** Shown when the step lives on a page the user is not on. */
 function wrongPageStatus(url: string): string {
   return `This step is on ${prettyPath(url)}. Go there and guidance will continue.`
@@ -101,8 +112,8 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
   function onClick(event: Event): void {
     if (!running || targets.length === 0) return
     if (flow.steps[index]?.type !== 'action') return
-    const clicked = event.target
-    if (!(clicked instanceof Node)) return
+    const clicked = deepTarget(event)
+    if (!clicked) return
     const hit = targets.some((element) => element === clicked || element.contains(clicked))
     if (hit) advance()
   }
@@ -115,8 +126,8 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
   function onChange(event: Event): void {
     if (!running || targets.length === 0) return
     if (flow.steps[index]?.type !== 'input') return
-    const changed = event.target
-    if (!(changed instanceof Node)) return
+    const changed = deepTarget(event)
+    if (!changed) return
     const hit = targets.some((element) => element === changed || element.contains(changed))
     if (hit) advance()
   }

@@ -2,7 +2,7 @@ import type { Target } from '@wendmark/core'
 import { getContext } from './context'
 import { getAccessibleName } from './name'
 import { getRole } from './role'
-import { buildSelectors } from './selectors'
+import { buildSelectors, buildShadowPath } from './selectors'
 import { getTestId } from './test-id'
 import { textWithoutFields, truncate } from './text'
 
@@ -19,6 +19,9 @@ const MAX_TEXT = 200
  */
 export function fingerprint(element: Element): Target {
   const target: Target = { selectors: buildSelectors(element) }
+
+  const shadowPath = buildShadowPath(element)
+  if (shadowPath.length >= 2) target.shadowPath = shadowPath
 
   const testId = getTestId(element)
   if (testId) target.testId = testId.value

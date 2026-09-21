@@ -37,4 +37,22 @@ describe('isProbablyVisible', () => {
     el.remove()
     expect(isProbablyVisible(el)).toBe(false)
   })
+
+  it('rejects an element inside a hidden web component', () => {
+    document.body.innerHTML = '<fika-form style="display:none"></fika-form>'
+    const host = document.querySelector('fika-form') as Element
+    host.attachShadow({ mode: 'open' }).innerHTML = '<button>Save</button>'
+    const button = (host.shadowRoot as ShadowRoot).querySelector('button') as Element
+
+    expect(isProbablyVisible(button)).toBe(false)
+  })
+
+  it('accepts an element inside a visible web component', () => {
+    document.body.innerHTML = '<fika-form></fika-form>'
+    const host = document.querySelector('fika-form') as Element
+    host.attachShadow({ mode: 'open' }).innerHTML = '<button>Save</button>'
+    const button = (host.shadowRoot as ShadowRoot).querySelector('button') as Element
+
+    expect(isProbablyVisible(button)).toBe(true)
+  })
 })
