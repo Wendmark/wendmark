@@ -1,6 +1,7 @@
 import type { Target } from '@wendmark/core'
 import { getAccessibleName } from './name'
 import { TEST_ID_ATTRIBUTES } from './test-id'
+import { followShadowPath, queryAllDeep } from './shadow'
 import { clean, textWithoutFields } from './text'
 
 /** Scoring more than this many candidates is never worth it. */
@@ -28,11 +29,8 @@ function textLooksRight(element: Element, wanted: string[]): boolean {
 
 /** Run a selector without letting a malformed one break resolution. */
 function safeQueryAll(root: ParentNode, selector: string): Element[] {
-  try {
-    return Array.from(root.querySelectorAll(selector))
-  } catch {
-    return []
-  }
+  // Deep: web components hide their insides from ordinary queries.
+  return queryAllDeep(root, selector)
 }
 
 /**
@@ -41,6 +39,12 @@ function safeQueryAll(root: ParentNode, selector: string): Element[] {
  */
 export function collectCandidates(target: Target, root: ParentNode): Element[] {
   const found = new Set<Element>()
+
+  // The exact route into a web component, when one was recorded.
+  if (target.shadowPath) {
+    const viaPath = followShadowPath(target.shadowPath, root)
+    if (viaPath) found.add(viaPath)
+  }
 
   for (const selector of target.selectors) {
     for (const element of safeQueryAll(root, selector)) found.add(element)

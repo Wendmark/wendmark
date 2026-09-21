@@ -1,4 +1,5 @@
 import { getRole } from './role'
+import { parentAcrossShadow } from './shadow'
 
 /** Roles of elements a user clicks or types into. */
 const INTERACTIVE_ROLES = new Set([
@@ -83,7 +84,8 @@ export function findInteractiveTarget(start: Element): Element {
   for (let level = 0; current && level <= MAX_CLIMB; level++) {
     if (isInteractive(current)) return current
     if (BOUNDARY_TAGS.has(current.localName)) break
-    current = current.parentElement
+    // Step out of a web component when we reach the edge of its shadow root.
+    current = parentAcrossShadow(current)
   }
   return start
 }

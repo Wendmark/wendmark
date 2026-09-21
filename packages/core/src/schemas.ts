@@ -37,6 +37,12 @@ export const TargetSchema = z.strictObject({
   context: z.string().min(1).max(200).optional(),
   /** The page this step was recorded on. A hint for "go here", never a gate. */
   url: z.string().min(1).max(2000).optional(),
+  /**
+   * The route to an element inside web components: a selector for each shadow
+   * host on the way in, and the element's own selector last. Only present
+   * when the element lives inside an open shadow root.
+   */
+  shadowPath: z.array(z.string().min(1)).min(2).max(10).optional(),
 })
 
 /** A step that points at an element the user should interact with. */
