@@ -1,4 +1,5 @@
 import { isStableId, stableClasses } from './stable'
+import { isInShadow, rootOf } from './shadow'
 import { getTestId } from './test-id'
 
 /** How many selectors are worth keeping. The schema allows at most five. */
@@ -13,7 +14,8 @@ const MAX_SEGMENT_CLASSES = 2
 /** Whether a selector matches the element and nothing else. */
 export function matchesOnly(selector: string, element: Element): boolean {
   try {
-    const found = element.ownerDocument.querySelectorAll(selector)
+    // Within the element's own root: a selector cannot cross a shadow edge.
+    const found = rootOf(element).querySelectorAll(selector)
     return found.length === 1 && found[0] === element
   } catch {
     return false
@@ -73,4 +75,25 @@ export function buildSelectors(element: Element): string[] {
   const unique = candidates.filter((selector) => matchesOnly(selector, element))
   const chosen = unique.length > 0 ? unique : candidates
   return [...new Set(chosen)].slice(0, MAX_SELECTORS)
+}
+
+/**
+ * The route to an element through shadow boundaries, outermost first, with
+ * the element's own selector last. Empty when the element is in the page
+ * itself, where plain selectors are enough.
+ */
+export function buildShadowPath(element: Element): string[] {
+  if (!isInShadow(element)) return []
+
+  const path: string[] = []
+  let current: Element | null = element
+
+  while (current) {
+    const [best] = buildSelectors(current)
+    path.unshift(best ?? current.localName)
+    const root = current.getRootNode()
+    if (!(root instanceof ShadowRoot)) break
+    current = root.host
+  }
+  return path
 }

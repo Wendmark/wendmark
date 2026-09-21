@@ -64,6 +64,16 @@ function describe(target: Target): string {
   }
 }
 
+/**
+ * The element the user really touched. Inside a web component, `event.target`
+ * is the component itself; the composed path starts with the real element.
+ */
+function deepTarget(event: Event): Element | null {
+  const [first] = event.composedPath()
+  if (first instanceof Element) return first
+  return event.target instanceof Element ? event.target : null
+}
+
 /** Whether a node is part of Wendmark's own UI. */
 function isOurs(node: EventTarget): boolean {
   return node instanceof Element && node.localName === OVERLAY_TAG
@@ -102,11 +112,12 @@ export function startRecording(options: RecordingOptions = {}): Recording {
    */
   function onClick(event: Event): void {
     if (!recording || steps.length >= MAX_STEPS) return
-    if (!(event.target instanceof Element)) return
+    const clicked = deepTarget(event)
+    if (!clicked) return
     // Never record the user using Wendmark's own controls.
     if (event.composedPath().some(isOurs)) return
 
-    const element = findInteractiveTarget(event.target)
+    const element = findInteractiveTarget(clicked)
     if (!isWorthRecording(element)) return
     // A double click, or a button that does not respond at once, is one step.
     if (element === lastElement) return
@@ -128,10 +139,12 @@ export function startRecording(options: RecordingOptions = {}): Recording {
    * What they put in the field is never read.
    */
   function onChange(event: Event): void {
-    if (!recording || !(event.target instanceof Element)) return
+    if (!recording) return
+    const changed = deepTarget(event)
+    if (!changed) return
     if (event.composedPath().some(isOurs)) return
 
-    const element = findInteractiveTarget(event.target)
+    const element = findInteractiveTarget(changed)
     if (!isWorthRecording(element)) return
 
     const target: Target = { ...fingerprint(element), url: view.location.href }
