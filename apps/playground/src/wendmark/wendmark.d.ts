@@ -11,6 +11,8 @@ declare global {
       start: (flow: unknown) => void
       resume: (flows: unknown) => unknown
       stop: () => void
+      record: (options?: { name?: string }) => void
+      stopRecording: () => unknown
     }
   }
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, usePathname } from './router'
 import { changeGrindFlow } from './wendmark/flows'
 import { OrdersPage } from './pages/OrdersPage'
@@ -15,6 +15,7 @@ const routes = [
 
 export function App() {
   const pathname = usePathname()
+  const [recording, setRecording] = useState(false)
 
   // If the user reloaded mid-flow, pick guidance up where they left off.
   useEffect(() => {
@@ -34,6 +35,24 @@ export function App() {
           onClick={() => window.Wendmark?.start(changeGrindFlow)}
         >
           Guide me
+        </button>
+        <button
+          type="button"
+          className="record-button"
+          onClick={() => {
+            if (recording) {
+              const flow = window.Wendmark?.stopRecording()
+              setRecording(false)
+              // Play it back straight away, and log it so it can be kept.
+              console.log(JSON.stringify(flow, null, 2))
+              if (flow) window.Wendmark?.start(flow)
+            } else {
+              window.Wendmark?.record({ name: 'Recorded in Fika' })
+              setRecording(true)
+            }
+          }}
+        >
+          {recording ? 'Stop and replay' : 'Record'}
         </button>
         <nav aria-label="Main">
           {routes.map((r) => (

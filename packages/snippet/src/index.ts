@@ -12,6 +12,7 @@ import type { Flow } from '@wendmark/core'
 import { looksLikeFlow } from '@wendmark/core/guard'
 import { startFlow, type Player } from './player/player'
 import { clearProgress, loadProgress } from './player/progress'
+import { startRecording, type Recording, type RecordingOptions } from './recorder/recorder'
 
 export type { Flow }
 export { createHighlighter, type Highlighter } from './overlay/highlighter'
@@ -25,6 +26,26 @@ export const version = '0.0.0'
 
 /** Only one flow is guided at a time. */
 let current: Player | null = null
+
+/** Only one recording at a time, too. */
+let currentRecording: Recording | null = null
+
+/**
+ * Starts recording the user's clicks as a flow. A badge is shown the whole
+ * time, and nothing the user types is ever recorded.
+ */
+export function record(options: RecordingOptions = {}): void {
+  stop()
+  currentRecording?.stop()
+  currentRecording = startRecording(options)
+}
+
+/** Stops recording and hands back the flow, or null when nothing was being recorded. */
+export function stopRecording(): Flow | null {
+  const recording = currentRecording
+  currentRecording = null
+  return recording ? recording.stop() : null
+}
 
 /** Starts guiding the user through a flow. Replaces any flow already running. */
 export function start(flow: Flow): Player {
