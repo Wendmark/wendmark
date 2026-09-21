@@ -5,11 +5,11 @@ Wendmark on an app other than Fika.
 
 ## 1. Load the snippet
 
-Serve it with `pnpm dev` (the portal serves it at `http://localhost:3000/snippet.js`),
+Serve it with `pnpm dev` (the portal serves it at `http://localhost:3100/snippet.js`),
 then add one tag to the app you want to guide:
 
 ```html
-<script src="http://localhost:3000/snippet.js"></script>
+<script src="http://localhost:3100/snippet.js"></script>
 ```
 
 For an app you cannot edit, paste the contents of `apps/portal/public/snippet.js`

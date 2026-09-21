@@ -39,8 +39,8 @@ pnpm dev
 
 `pnpm dev` starts:
 
-- Portal: http://localhost:3000 (the snippet is served at `/snippet.js`)
-- Playground (Fika): http://localhost:5173
+- Portal: http://localhost:3100 (the snippet is served at `/snippet.js`)
+- Playground (Fika): http://localhost:5174
 - Snippet: tsup in watch mode, rebuilding `apps/portal/public/snippet.js`
 
 ## Scripts

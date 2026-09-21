@@ -74,7 +74,7 @@ The snippet runs inside customers' apps, so it must be a polite guest.
 
 ```bash
 pnpm install        # Node 22, pnpm 9 (see .nvmrc / packageManager)
-pnpm dev            # portal :3000 + playground :5173 + snippet watch
+pnpm dev            # portal :3100 + playground :5174 + snippet watch
 pnpm build          # everything; snippet -> apps/portal/public/snippet.js
 pnpm test           # vitest in each package + scripts/boundaries.test.ts
 pnpm typecheck      # tsc --noEmit everywhere
