@@ -1,6 +1,6 @@
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../generated/prisma/client'
-import { env } from './env'
+import { getEnv } from './env'
 
 /**
  * One Prisma client for the whole app.
@@ -12,15 +12,16 @@ import { env } from './env'
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
 
 function createClient(): PrismaClient {
+  const env = getEnv()
   // Prisma 7 talks to Postgres through a driver adapter rather than its own
   // query engine binary, which keeps deployments lighter.
   const adapter = new PrismaPg({ connectionString: env.DATABASE_URL })
-  return new PrismaClient({
+  const client = new PrismaClient({
     adapter,
     log: env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   })
+  if (env.NODE_ENV !== 'production') globalForPrisma.prisma = client
+  return client
 }
 
-export const db = globalForPrisma.prisma ?? createClient()
-
-if (env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+export const db: PrismaClient = globalForPrisma.prisma ?? createClient()
