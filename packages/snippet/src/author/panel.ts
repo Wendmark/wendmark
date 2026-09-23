@@ -1,6 +1,13 @@
 import type { Step } from '@wendmark/core'
 import type { Draft } from './draft'
 import { isInputStep } from './draft'
+import {
+  clampPosition,
+  defaultPosition,
+  loadPosition,
+  savePosition,
+  type Position,
+} from './panel-position'
 
 /**
  * The recorder panel: the one piece of Wendmark a product owner really
@@ -17,7 +24,7 @@ const PANEL_CSS = `
   [data-wendmark="recorder"] {
     position: fixed;
     top: 16px;
-    right: 16px;
+    left: 16px;
     width: 320px;
     max-height: calc(100vh - 32px);
     display: flex;
@@ -36,6 +43,35 @@ const PANEL_CSS = `
     gap: 8px;
     padding: 12px 14px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+  }
+  [data-wendmark="recorder"] header:active {
+    cursor: grabbing;
+  }
+  [data-wendmark="recorder"] header button {
+    font: inherit;
+    font-size: 12px;
+    padding: 2px 7px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #8f8c9c;
+    cursor: pointer;
+  }
+  [data-wendmark="recorder"] header button:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #2a2833;
+  }
+  [data-wendmark="recorder"].is-collapsed .steps,
+  [data-wendmark="recorder"].is-collapsed .empty,
+  [data-wendmark="recorder"].is-collapsed .message,
+  [data-wendmark="recorder"].is-collapsed footer {
+    display: none !important;
+  }
+  [data-wendmark="recorder"].is-collapsed {
+    width: 260px;
   }
   [data-wendmark="recorder"] .dot {
     width: 8px;
@@ -241,13 +277,20 @@ export function createRecorderPanel(
   name.setAttribute('aria-label', 'Name of this process')
   name.addEventListener('change', () => handlers.onRename(name.value))
 
+  // Collapse, for when the panel covers the thing you need to click.
+  const collapse = doc.createElement('button')
+  collapse.type = 'button'
+  collapse.textContent = '–'
+  collapse.setAttribute('aria-label', 'Collapse the recorder')
+  collapse.setAttribute('aria-expanded', 'true')
+
   const close = doc.createElement('button')
   close.type = 'button'
   close.textContent = '✕'
   close.setAttribute('aria-label', 'Stop recording and discard')
   close.addEventListener('click', () => handlers.onCancel())
 
-  header.append(dot, name, close)
+  header.append(dot, name, collapse, close)
 
   // ---- the steps ----
   const list = doc.createElement('ul')
@@ -346,6 +389,70 @@ export function createRecorderPanel(
     row.append(marker, body)
     return row
   }
+
+  // ---- collapsing ----
+  let collapsed = false
+  collapse.addEventListener('click', () => {
+    collapsed = !collapsed
+    panel.classList.toggle('is-collapsed', collapsed)
+    collapse.textContent = collapsed ? '+' : '–'
+    collapse.setAttribute('aria-expanded', String(!collapsed))
+    collapse.setAttribute('aria-label', collapsed ? 'Expand the recorder' : 'Collapse the recorder')
+  })
+
+  // ---- dragging, so the panel never has to be in the way ----
+  const view = doc.defaultView
+  const storage = (() => {
+    try {
+      return view?.localStorage
+    } catch {
+      return undefined
+    }
+  })()
+
+  function place(position: Position): void {
+    const viewport = { width: view?.innerWidth ?? 1024, height: view?.innerHeight ?? 768 }
+    const size = { width: panel.offsetWidth || 320, height: panel.offsetHeight || 400 }
+    const safe = clampPosition(position, size, viewport)
+    panel.style.left = `${safe.left}px`
+    panel.style.top = `${safe.top}px`
+  }
+
+  function startPosition(): Position {
+    const viewport = { width: view?.innerWidth ?? 1024, height: view?.innerHeight ?? 768 }
+    const size = { width: panel.offsetWidth || 320, height: panel.offsetHeight || 400 }
+    return loadPosition(storage) ?? defaultPosition(size, viewport)
+  }
+
+  header.addEventListener('pointerdown', (event: PointerEvent) => {
+    // The name field and the buttons in the header are not drag handles.
+    if (event.target !== header && event.target !== dot) return
+    event.preventDefault()
+
+    const rect = panel.getBoundingClientRect()
+    const grabX = event.clientX - rect.left
+    const grabY = event.clientY - rect.top
+
+    function onMove(move: PointerEvent): void {
+      place({ left: move.clientX - grabX, top: move.clientY - grabY })
+    }
+
+    function onUp(): void {
+      view?.removeEventListener('pointermove', onMove)
+      view?.removeEventListener('pointerup', onUp)
+      const moved = panel.getBoundingClientRect()
+      savePosition(storage, { left: moved.left, top: moved.top })
+    }
+
+    view?.addEventListener('pointermove', onMove)
+    view?.addEventListener('pointerup', onUp)
+  })
+
+  place(startPosition())
+  view?.addEventListener('resize', () => {
+    const rect = panel.getBoundingClientRect()
+    place({ left: rect.left, top: rect.top })
+  })
 
   return {
     render: (state: PanelState) => {
