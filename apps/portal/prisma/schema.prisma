@@ -1,0 +1,11 @@
+// The portal's database schema. Models arrive with the first migration.
+// Generated client lives outside app/, where Next.js treats folders as routes.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
