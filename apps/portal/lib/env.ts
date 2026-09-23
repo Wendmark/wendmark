@@ -8,7 +8,7 @@ import { z } from 'zod'
  */
 const EnvSchema = z.object({
   DATABASE_URL: z
-    .string()
+    .string({ error: 'DATABASE_URL is required. See apps/portal/.env.example.' })
     .min(1, 'DATABASE_URL is required. See apps/portal/.env.example.')
     .refine(
       (value) => value.startsWith('postgres://') || value.startsWith('postgresql://'),
@@ -19,8 +19,9 @@ const EnvSchema = z.object({
 
 export type Env = z.infer<typeof EnvSchema>
 
-function read(): Env {
-  const parsed = EnvSchema.safeParse(process.env)
+/** Reads and checks environment values, explaining anything that is wrong. */
+export function parseEnv(source: Record<string, string | undefined>): Env {
+  const parsed = EnvSchema.safeParse(source)
   if (!parsed.success) {
     const problems = parsed.error.issues.map(
       (issue) => `  ${issue.path.join('.')}: ${issue.message}`,
@@ -30,4 +31,16 @@ function read(): Env {
   return parsed.data
 }
 
-export const env: Env = read()
+let cached: Env | null = null
+
+/**
+ * The checked environment.
+ *
+ * Read on first use rather than on import: a module that validates as a side
+ * effect of being imported cannot be tested, and fails in whatever order the
+ * bundler happens to load things.
+ */
+export function getEnv(): Env {
+  cached ??= parseEnv(process.env)
+  return cached
+}
