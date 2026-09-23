@@ -7,8 +7,10 @@ dist/
 out/
 *.tsbuildinfo
 apps/portal/next-env.d.ts
-# The snippet is built into the portal's public dir; it is a build artifact.
+# The snippet and the authoring bundle are built into the portal's public
+# dir; they are build artifacts.
 apps/portal/public/snippet.js
+apps/portal/public/author.js
 
 # generated Prisma client
 apps/portal/generated/
