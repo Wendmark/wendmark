@@ -57,7 +57,12 @@ The snippet runs inside customers' apps, so it must be a polite guest.
   touch built-ins.
 - **No framework.** Plain TypeScript and DOM APIs. React, Preact, Vue, Svelte,
   Lit and similar are lint errors in the snippet.
-- **Size budget: 30 KB gzipped**, enforced by `pnpm size` in CI. Check the cost
+- **Two bundles.** `snippet.js` is what every visitor downloads. `author.js`
+  holds the recording and editing UI and is fetched only when the portal
+  sends someone to record, so it is outside the size budget. Anything only an
+  author needs belongs in `src/author/`, reached through the lazy loader —
+  never imported from `src/index.ts`.
+- **Size budget: 30 KB gzipped** for `snippet.js`, enforced by `pnpm size` in CI. Check the cost
   of every dependency. Importing anything from `@wendmark/core`'s root pulls in
   **zod (~95 KB gzipped)**, because building a schema is a top-level call the
   bundler cannot drop. Use type-only imports, or the zero-dependency

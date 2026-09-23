@@ -108,6 +108,7 @@ export default tseslint.config(
       '**/.turbo/**',
       '**/coverage/**',
       'apps/portal/public/snippet.js',
+      'apps/portal/public/author.js',
       'apps/portal/next-env.d.ts',
     ],
   },
