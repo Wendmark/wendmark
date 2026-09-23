@@ -1,5 +1,9 @@
 /**
- * Flows for the Fika demo, written by hand until the recorder exists.
+ * A hand-written flow, used by the developer harness in this demo app.
+ *
+ * This is not how flows are meant to be made: a product owner records one
+ * from the portal, edits it there, and publishes it. This file exists so the
+ * engine can be exercised without the portal running.
  *
  * These are plain objects on purpose: the playground pretends to be a
  * customer's app, so it knows nothing about Wendmark's types. The snippet
