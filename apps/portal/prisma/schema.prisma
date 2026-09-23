@@ -33,18 +33,46 @@ model Organization {
 }
 
 model User {
-  id            String    @id @default(uuid()) @db.Uuid
-  email         String    @unique
-  name          String?
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(uuid()) @db.Uuid
+  email          String    @unique
+  name           String?
+  emailVerified  DateTime?
+  image          String?
+  /// Argon2id hash. Null for accounts that only sign in through SSO.
+  passwordHash   String?
+  /// Bumped to invalidate every existing session for this user: password
+  /// change, role change, or "sign out everywhere". Sessions are JWTs and
+  /// cannot be deleted individually, so this is how revocation works.
+  sessionVersion Int       @default(1)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   memberships Membership[]
+  accounts    Account[]
   flows       Flow[]       @relation("FlowAuthor")
 
   @@map("user")
+}
+
+/// A single-sign-on identity linked to a user, written by Auth.js.
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("account")
 }
 
 enum Role {
