@@ -95,6 +95,10 @@ is revoked. Everything that reads a session goes through
 `docs/decisions/auth.md`. `/setup` creates the first administrator and works
 only while no users exist.
 
+After changing the Prisma schema, run `db:migrate` **and restart the dev
+server**: the generated client is imported once, so a running server keeps
+the old one and new models appear as `undefined`.
+
 The portal reads `DATABASE_URL` and `AUTH_SECRET` from `apps/portal/.env`,
 validated by `lib/env.ts`. The generated Prisma client lives in `apps/portal/generated/`
 and is gitignored; a `postinstall` hook regenerates it after every install,
