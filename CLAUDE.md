@@ -81,7 +81,18 @@ pnpm typecheck      # tsc --noEmit everywhere
 pnpm lint           # eslint (boundaries included), --max-warnings 0
 pnpm size           # snippet gzipped size, fails above 30 KB
 pnpm format         # prettier --write
+
+# the portal's database (Postgres via Prisma 7 with the pg driver adapter)
+docker compose up -d                        # local Postgres on :5433
+pnpm --filter @wendmark/portal db:migrate   # create and apply a migration
+pnpm --filter @wendmark/portal db:studio    # browse the data
 ```
+
+The portal reads `DATABASE_URL` from `apps/portal/.env`, validated by
+`lib/env.ts`. The generated Prisma client lives in `apps/portal/generated/`
+and is gitignored; a `postinstall` hook regenerates it after every install,
+including in CI. Run `db:generate` yourself after changing the schema, and
+never import Prisma from anywhere but `lib/db.ts`.
 
 Filter to one package: `pnpm --filter @wendmark/core test`.
 

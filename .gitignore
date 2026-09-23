@@ -10,6 +10,15 @@ apps/portal/next-env.d.ts
 # The snippet is built into the portal's public dir; it is a build artifact.
 apps/portal/public/snippet.js
 
+# generated Prisma client
+apps/portal/generated/
+
+# agent skill files written by tooling (Prisma installs these)
+apps/portal/.agents/
+apps/portal/.windsurf/
+apps/portal/.claude/
+apps/portal/skills-lock.json
+
 # tooling caches
 .turbo/
 coverage/
