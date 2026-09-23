@@ -232,3 +232,75 @@ button.destructive {
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+
+.processes {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.process {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.9rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 10px;
+}
+
+.process.status-published {
+  border-left-color: #1e7a3c;
+}
+
+.process.status-paused {
+  border-left-color: #d9a441;
+}
+
+.process-main {
+  flex: 1;
+  min-width: 14rem;
+}
+
+.process-main a {
+  font-weight: 600;
+  color: inherit;
+}
+
+.process-main p {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+}
+
+.process-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.process-actions button {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.steps {
+  display: grid;
+  gap: 0.6rem;
+  padding-left: 1.2rem;
+}
+
+.steps p {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+}
