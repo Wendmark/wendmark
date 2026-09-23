@@ -90,8 +90,9 @@ pnpm --filter @wendmark/portal db:studio    # browse the data
 
 The portal reads `DATABASE_URL` from `apps/portal/.env`, validated by
 `lib/env.ts`. The generated Prisma client lives in `apps/portal/generated/`
-and is gitignored: run `db:generate` after changing the schema, and never
-import Prisma from anywhere but `lib/db.ts`.
+and is gitignored; a `postinstall` hook regenerates it after every install,
+including in CI. Run `db:generate` yourself after changing the schema, and
+never import Prisma from anywhere but `lib/db.ts`.
 
 Filter to one package: `pnpm --filter @wendmark/core test`.
 
