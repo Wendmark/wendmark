@@ -1,5 +1,5 @@
 import type { App } from '../../generated/prisma/client'
-import { db } from '../db'
+import { getDb } from '../db'
 import { require as requirePermission } from '../permissions'
 import { generatePublicKey } from './keys'
 import { parseOrigins } from './origins'
@@ -36,7 +36,7 @@ export class InvalidInputError extends Error {
 export async function listApps(ctx: Context): Promise<App[]> {
   requirePermission(ctx.role, 'app:read')
   if (!ctx.organizationId) return []
-  return db.app.findMany({
+  return getDb().app.findMany({
     where: { organizationId: ctx.organizationId },
     orderBy: { createdAt: 'asc' },
   })
@@ -49,7 +49,38 @@ export async function listApps(ctx: Context): Promise<App[]> {
 export async function getApp(ctx: Context, appId: string): Promise<App | null> {
   requirePermission(ctx.role, 'app:read')
   if (!ctx.organizationId) return null
-  return db.app.findFirst({ where: { id: appId, organizationId: ctx.organizationId } })
+  return getDb().app.findFirst({ where: { id: appId, organizationId: ctx.organizationId } })
+}
+
+/** Addresses that used this app's key but are not on its allowlist. */
+export async function listUnknownOrigins(
+  ctx: Context,
+  appId: string,
+): Promise<{ origin: string; count: number; lastSeenAt: Date }[]> {
+  requirePermission(ctx.role, 'app:read')
+  const app = await getApp(ctx, appId)
+  if (!app) return []
+
+  const sightings = await getDb().originSighting.findMany({
+    where: { appId: app.id },
+    orderBy: { lastSeenAt: 'desc' },
+    take: 10,
+  })
+  // An address may have been added to the allowlist since it was seen.
+  return sightings
+    .filter((sighting) => !app.origins.includes(sighting.origin))
+    .map(({ origin, count, lastSeenAt }) => ({ origin, count, lastSeenAt }))
+}
+
+/** Adds an address that was seen using this app's key. */
+export async function allowOrigin(ctx: Context, appId: string, origin: string): Promise<App> {
+  requirePermission(ctx.role, 'app:update')
+  const existing = await getApp(ctx, appId)
+  if (!existing) throw new NotFoundError()
+
+  const updated = await updateApp(ctx, appId, { origins: [...existing.origins, origin] })
+  await getDb().originSighting.deleteMany({ where: { appId: existing.id, origin } })
+  return updated
 }
 
 export async function createApp(
@@ -65,7 +96,7 @@ export async function createApp(
   const origins = parseOrigins(input.origins)
   if (!origins.ok) throw new InvalidInputError(origins.reason)
 
-  return db.app.create({
+  return getDb().app.create({
     data: {
       organizationId: ctx.organizationId,
       name,
@@ -98,7 +129,7 @@ export async function updateApp(
     data.origins = origins.origins
   }
 
-  return db.app.update({ where: { id: existing.id }, data })
+  return getDb().app.update({ where: { id: existing.id }, data })
 }
 
 /**
@@ -110,7 +141,7 @@ export async function rotateKey(ctx: Context, appId: string): Promise<App> {
   const existing = await getApp(ctx, appId)
   if (!existing) throw new NotFoundError()
 
-  return db.app.update({
+  return getDb().app.update({
     where: { id: existing.id },
     data: { publicKey: generatePublicKey() },
   })
@@ -128,5 +159,5 @@ export async function deleteApp(ctx: Context, appId: string, confirmation: strin
     throw new InvalidInputError('Type the app name exactly to confirm.')
   }
 
-  await db.app.delete({ where: { id: existing.id } })
+  await getDb().app.delete({ where: { id: existing.id } })
 }

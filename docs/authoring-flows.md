@@ -9,8 +9,12 @@ Serve it with `pnpm dev` (the portal serves it at `http://localhost:3100/snippet
 then add one tag to the app you want to guide:
 
 ```html
-<script src="http://localhost:3100/snippet.js"></script>
+<script src="http://localhost:3100/snippet.js" data-app="wm_yourappkey"></script>
 ```
+
+The `data-app` key comes from the app's page in the portal. Without it the
+snippet still works for hand-written flows, but the portal cannot tell that
+it is installed.
 
 For an app you cannot edit, paste the contents of `apps/portal/public/snippet.js`
 into the browser console instead. Either way you end up with one global,
