@@ -2,7 +2,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import type { NextAuthConfig } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import type { Provider } from 'next-auth/providers'
-import { db } from '../db'
+import { getDb } from '../db'
 import { getEnv, hasOidc } from '../env'
 import { verifyPassword } from './password'
 
@@ -31,7 +31,7 @@ function credentialsProvider(): Provider {
       const password = typeof raw?.['password'] === 'string' ? raw['password'] : ''
       if (!email || !password) return null
 
-      const user = await db.user.findUnique({ where: { email } })
+      const user = await getDb().user.findUnique({ where: { email } })
       // Verify even when there is no such user, so the response time does not
       // reveal which email addresses exist.
       const ok = await verifyPassword(user?.passwordHash ?? null, password)
@@ -56,7 +56,7 @@ function oidcProvider(): Provider[] {
 }
 
 export const authConfig: NextAuthConfig = {
-  adapter: PrismaAdapter(db),
+  adapter: PrismaAdapter(getDb()),
   providers: [credentialsProvider(), ...oidcProvider()],
   // JWT sessions: nothing to store, nothing to look up. Individual sessions
   // cannot be deleted, so user.sessionVersion is how revocation works — see
@@ -70,7 +70,7 @@ export const authConfig: NextAuthConfig = {
 
       // Read membership and session version on each renewal, so a role change
       // or a forced sign-out takes effect without waiting for expiry.
-      const account = await db.user.findUnique({
+      const account = await getDb().user.findUnique({
         where: { id: token.sub },
         select: {
           sessionVersion: true,

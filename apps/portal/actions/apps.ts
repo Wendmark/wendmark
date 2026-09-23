@@ -3,7 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireUser } from '../lib/auth/session'
-import { createApp, deleteApp, rotateKey, updateApp, type Context } from '../lib/apps/service'
+import {
+  allowOrigin,
+  createApp,
+  deleteApp,
+  rotateKey,
+  updateApp,
+  type Context,
+} from '../lib/apps/service'
 import { InvalidInputError, NotFoundError } from '../lib/apps/service'
 import { NotAllowedError } from '../lib/permissions'
 
@@ -67,6 +74,20 @@ export async function rotateKeyAction(_previous: FormResult, form: FormData): Pr
   const appId = String(form.get('appId') ?? '')
   try {
     await rotateKey(await context(), appId)
+  } catch (error) {
+    return explain(error)
+  }
+  revalidatePath(`/apps/${appId}`)
+  return {}
+}
+
+export async function allowOriginAction(
+  _previous: FormResult,
+  form: FormData,
+): Promise<FormResult> {
+  const appId = String(form.get('appId') ?? '')
+  try {
+    await allowOrigin(await context(), appId, String(form.get('origin') ?? ''))
   } catch (error) {
     return explain(error)
   }

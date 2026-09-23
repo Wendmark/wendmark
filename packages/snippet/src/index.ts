@@ -12,6 +12,7 @@ import type { Flow } from '@wendmark/core'
 import { looksLikeFlow } from '@wendmark/core/guard'
 import { startFlow, type Player } from './player/player'
 import { clearProgress, loadProgress } from './player/progress'
+import { sendInstallPing } from './install/ping'
 import { startRecording, type Recording, type RecordingOptions } from './recorder/recorder'
 
 export type { Flow }
@@ -23,6 +24,10 @@ export { prefersReducedMotion } from './overlay/cursor'
 export { fingerprint, findInteractiveTarget, resolve } from '@wendmark/dom'
 
 export const version = '0.0.0'
+
+// Tell the portal the snippet is installed, so its page can stop saying
+// "waiting". Fire and forget: nothing here blocks the host page.
+sendInstallPing(document, window, version)
 
 /** Only one flow is guided at a time. */
 let current: Player | null = null

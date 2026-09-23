@@ -113,11 +113,31 @@ model App {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   flows        Flow[]
+  sightings    OriginSighting[]
 
   @@index([organizationId])
   @@map("app")
+}
+
+/// An address that used an app's key but is not on its allowlist.
+///
+/// Usually a staging environment or a developer's machine that nobody
+/// remembered to add, so the portal offers to add it rather than leaving
+/// someone wondering why guidance never appears.
+model OriginSighting {
+  id          String   @id @default(uuid()) @db.Uuid
+  appId       String   @db.Uuid
+  origin      String
+  count       Int      @default(1)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, origin])
+  @@map("origin_sighting")
 }
 
 enum FlowStatus {
