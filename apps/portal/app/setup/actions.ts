@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { db } from '../../lib/db'
+import { getDb } from '../../lib/db'
 import { checkPassword, hashPassword } from '../../lib/auth/password'
 import { needsSetup } from '../../lib/auth/setup'
 
@@ -31,7 +31,7 @@ export async function createFirstAdmin(
   const strong = checkPassword(password)
   if (!strong.ok) return { error: strong.reason }
 
-  await db.organization.create({
+  await getDb().organization.create({
     data: {
       name: organizationName,
       memberships: {

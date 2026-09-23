@@ -82,13 +82,13 @@ async function main(): Promise<void> {
   })
 
   const app = await db.app.upsert({
-    where: { publicKey: 'wm_dev_fika' },
+    where: { publicKey: 'wm_devfka000000000000' },
     update: {},
     create: {
       organizationId: organization.id,
       name: 'Fika (local)',
       origins: ['http://localhost:5174'],
-      publicKey: 'wm_dev_fika',
+      publicKey: 'wm_devfka000000000000',
     },
   })
 
