@@ -42,6 +42,15 @@ pnpm dev
 Already have a Postgres you would rather use? Point `DATABASE_URL` at it and
 skip the compose file.
 
+Then open the portal at http://localhost:3100. A fresh database sends you to
+**/setup** to create your organization and its first administrator. If you ran
+`db:seed` instead, sign in as `dev@example.com` with the password the seed
+prints.
+
+Signing in uses an email and a password by default: no mail server is
+required. Set `OIDC_ISSUER`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` to add
+single sign-on. See [docs/decisions/auth.md](docs/decisions/auth.md).
+
 `pnpm dev` starts:
 
 - Portal: http://localhost:3100 (the snippet is served at `/snippet.js`)

@@ -2,15 +2,22 @@
  * Development data: one organization, one member, one app and one flow.
  *
  * Safe to run repeatedly — everything is upserted by a stable key.
+ *
+ * Sign in as dev@example.com with the password below. Development only: a
+ * real installation creates its first administrator through /setup.
  */
 import 'dotenv/config'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../generated/prisma/client'
+import { hashPassword } from '../lib/auth/password'
 
 const connectionString = process.env['DATABASE_URL']
 if (!connectionString) throw new Error('DATABASE_URL is not set. See apps/portal/.env.example.')
 
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) })
+
+/** Development only. Real installations set a password through /setup. */
+const DEV_PASSWORD = 'development password'
 
 /** The Fika demo flow, as the recorder would produce it. */
 const demoSteps = [
@@ -61,10 +68,11 @@ async function main(): Promise<void> {
     create: { id: '00000000-0000-4000-8000-000000000001', name: 'Acme' },
   })
 
+  const passwordHash = await hashPassword(DEV_PASSWORD)
   const user = await db.user.upsert({
     where: { email: 'dev@example.com' },
-    update: {},
-    create: { email: 'dev@example.com', name: 'Dev User' },
+    update: { passwordHash },
+    create: { email: 'dev@example.com', name: 'Dev User', passwordHash },
   })
 
   await db.membership.upsert({
@@ -99,6 +107,7 @@ async function main(): Promise<void> {
   }
 
   console.log(`Seeded: organization "${organization.name}", app "${app.name}", 1 flow.`)
+  console.log(`Sign in as ${user.email} with the password: ${DEV_PASSWORD}`)
 }
 
 main()
