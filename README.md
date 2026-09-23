@@ -42,7 +42,8 @@ pnpm dev
 Already have a Postgres you would rather use? Point `DATABASE_URL` at it and
 skip the compose file.
 
-Then open the portal at http://localhost:3100. A fresh database sends you to
+Then open the portal at http://localhost:3100. Add an app, paste its script
+tag into that app, and the portal will confirm it has seen the snippet. A fresh database sends you to
 **/setup** to create your organization and its first administrator. If you ran
 `db:seed` instead, sign in as `dev@example.com` with the password the seed
 prints.

@@ -183,3 +183,31 @@ button.secondary {
 button.destructive {
   background: #b3261e;
 }
+
+.seen {
+  color: #1e7a3c;
+}
+
+.notice-box {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #f0dfb8;
+  border-radius: 12px;
+  background: #fffaf0;
+}
+
+.notice-box h3 {
+  margin-top: 0;
+  font-size: 0.95rem;
+}
+
+.plain {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.plain code {
+  font-size: 0.85rem;
+}
