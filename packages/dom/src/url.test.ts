@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { prettyPath, urlMatches } from './url'
+import { pagePath, prettyPath, urlMatches } from './url'
 
 describe('urlMatches', () => {
   it('matches the same page', () => {
@@ -18,8 +18,21 @@ describe('urlMatches', () => {
     expect(urlMatches('https://fika.test/profile', 'https://fika.test/orders')).toBe(false)
   })
 
-  it('treats a different site as different', () => {
-    expect(urlMatches('https://fika.test/profile', 'https://other.test/profile')).toBe(false)
+  it('matches the same page across environments', () => {
+    // A flow recorded on a laptop has to work in production. Which app a flow
+    // belongs to is decided by the portal, not by the address bar.
+    expect(urlMatches('http://localhost:5174/profile', 'https://fika.test/profile')).toBe(true)
+    expect(urlMatches('https://staging.fika.test/orders', 'https://fika.test/orders')).toBe(true)
+  })
+
+  it('still tells different pages apart on the same site', () => {
+    expect(urlMatches('https://fika.test/profile', 'https://fika.test/orders')).toBe(false)
+  })
+
+  it('works with a stored path, not only a full address', () => {
+    expect(urlMatches('/profile', 'https://fika.test/profile')).toBe(true)
+    expect(urlMatches('/profile', 'https://fika.test/orders')).toBe(false)
+    expect(urlMatches('/orders/10421', 'https://fika.test/orders/98765')).toBe(true)
   })
 
   it('treats ids in the path as wildcards', () => {
@@ -69,7 +82,32 @@ describe('prettyPath', () => {
     expect(prettyPath('https://fika.test/#/orders')).toBe('/orders')
   })
 
-  it('gives back whatever it was given when that is not a URL', () => {
-    expect(prettyPath('nonsense')).toBe('nonsense')
+  it('treats anything else as a path, since that is what a step stores', () => {
+    expect(prettyPath('nonsense')).toBe('/nonsense')
+  })
+})
+
+describe('pagePath', () => {
+  it('keeps the page and drops everything environment-specific', () => {
+    expect(pagePath('http://localhost:5174/profile')).toBe('/profile')
+    expect(pagePath('https://fika.test/orders/10421/items')).toBe('/orders/10421/items')
+  })
+
+  it('drops the query string, which can carry data we should not keep', () => {
+    expect(pagePath('https://fika.test/orders?customer=alex@example.com')).toBe('/orders')
+  })
+
+  it('keeps a hash route, because that is the page in many apps', () => {
+    expect(pagePath('https://fika.test/#/orders/1')).toBe('/orders/1')
+  })
+
+  it('calls the root the root', () => {
+    expect(pagePath('https://fika.test/')).toBe('/')
+    expect(pagePath('')).toBe('/')
+  })
+
+  it('is what a step stores, so it round-trips with urlMatches', () => {
+    const stored = pagePath('http://localhost:5174/orders/10421')
+    expect(urlMatches(stored, 'https://fika.test/orders/98765')).toBe(true)
   })
 })

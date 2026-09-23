@@ -1,5 +1,5 @@
 import type { ActionStep, Flow, InputStep, Target } from '@wendmark/core'
-import { fingerprint, findInteractiveTarget, getRole, isInteractive } from '@wendmark/dom'
+import { fingerprint, findInteractiveTarget, getRole, isInteractive, pagePath } from '@wendmark/dom'
 import { createOverlay, OVERLAY_TAG } from '../overlay/overlay'
 import { createRecordingBadge } from './badge'
 
@@ -123,7 +123,7 @@ export function startRecording(options: RecordingOptions = {}): Recording {
     if (element === lastElement) return
     lastElement = element
 
-    const target: Target = { ...fingerprint(element), url: view.location.href }
+    const target: Target = { ...fingerprint(element), url: pagePath(view.location.href) }
     steps.push({
       type: 'action',
       id: `s${steps.length + 1}`,
@@ -147,7 +147,7 @@ export function startRecording(options: RecordingOptions = {}): Recording {
     const element = findInteractiveTarget(changed)
     if (!isWorthRecording(element)) return
 
-    const target: Target = { ...fingerprint(element), url: view.location.href }
+    const target: Target = { ...fingerprint(element), url: pagePath(view.location.href) }
     const last = steps[steps.length - 1]
     if (last && lastElement === element) steps.pop()
 

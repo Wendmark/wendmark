@@ -35,8 +35,9 @@ export const changeGrindFlow = {
         name: 'Grind',
         context: 'Profile',
         // A hint, not a gate: if the user is elsewhere, guidance says where
-        // to go instead of just "can't find this step".
-        url: 'http://localhost:5174/profile',
+        // to go instead of just "can't find this step". Stored as a path, so
+        // the same flow works on localhost, staging and production.
+        url: '/profile',
       },
     },
     {
@@ -55,7 +56,7 @@ export const changeGrindFlow = {
         name: 'Save changes',
         text: 'Save changes',
         context: 'Profile',
-        url: 'http://localhost:5174/profile',
+        url: '/profile',
       },
     },
   ],
