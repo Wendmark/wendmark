@@ -1,5 +1,15 @@
-// The portal's database schema. Models arrive with the first migration.
-// Generated client lives outside app/, where Next.js treats folders as routes.
+// The portal's database schema.
+//
+// Shape notes:
+// - Ids are UUIDs: a self-hoster may move or merge data, and sequential ids
+//   leak how much of it there is.
+// - A flow's steps are a JSON column, validated with FlowSchema from
+//   @wendmark/core before they are written. Steps are always read as a whole
+//   flow, never queried individually.
+// - Deleting a recorded process is a bad afternoon, so flows are soft
+//   deleted and can be brought back.
+// - Organizations exist from day one even while everything is single-team,
+//   because adding tenancy later is a painful migration.
 
 generator client {
   provider = "prisma-client"
@@ -8,4 +18,143 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  apps        App[]
+
+  @@map("organization")
+}
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String    @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships Membership[]
+  flows       Flow[]       @relation("FlowAuthor")
+
+  @@map("user")
+}
+
+enum Role {
+  admin
+  editor
+  viewer
+
+  @@map("role")
+}
+
+model Membership {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  userId         String       @db.Uuid
+  role           Role         @default(editor)
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("membership")
+}
+
+/// An app a customer has installed the snippet into.
+model App {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  name           String
+  /// Origins the snippet may be used from, e.g. https://app.example.com.
+  origins        String[]
+  /// Public key that appears in the script tag. Not a secret.
+  publicKey      String    @unique
+  /// Launcher settings and anything else the snippet reads on load.
+  settings       Json      @default("{}")
+  /// When a snippet using this key was last seen, and where.
+  lastSeenAt     DateTime?
+  lastSeenOrigin String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  flows        Flow[]
+
+  @@index([organizationId])
+  @@map("app")
+}
+
+enum FlowStatus {
+  draft
+  published
+  paused
+
+  @@map("flow_status")
+}
+
+/// Whether end users can find a flow for themselves, or only reach it when
+/// the app starts it by id.
+enum FlowVisibility {
+  listed
+  hidden
+
+  @@map("flow_visibility")
+}
+
+/// A process recorded in an app. The steps a user is guided through.
+model Flow {
+  id            String         @id @default(uuid()) @db.Uuid
+  appId         String         @db.Uuid
+  name          String
+  description   String?
+  /// Steps as recorded, validated against FlowSchema before writing.
+  steps         Json
+  /// The flow format these steps were written in.
+  schemaVersion Int            @default(1)
+  status        FlowStatus     @default(draft)
+  visibility    FlowVisibility @default(listed)
+  /// Where this flow applies, e.g. ["/orders", "/orders/*"]. Empty: anywhere.
+  urlPatterns   String[]
+  /// Position in the launcher list.
+  sortOrder     Int            @default(0)
+  createdById   String?        @db.Uuid
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  /// Soft delete: a deleted process can be brought back.
+  deletedAt     DateTime?
+
+  app       App           @relation(fields: [appId], references: [id], onDelete: Cascade)
+  createdBy User?         @relation("FlowAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  versions  FlowVersion[]
+
+  @@index([appId, status])
+  @@map("flow")
+}
+
+/// An immutable snapshot taken at publish time. Users are always served one
+/// of these, so editing a draft never disturbs someone mid-flow.
+model FlowVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  flowId        String   @db.Uuid
+  version       Int
+  name          String
+  description   String?
+  steps         Json
+  schemaVersion Int      @default(1)
+  urlPatterns   String[]
+  publishedAt   DateTime @default(now())
+  publishedById String?  @db.Uuid
+
+  flow Flow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  @@unique([flowId, version])
+  @@map("flow_version")
 }
