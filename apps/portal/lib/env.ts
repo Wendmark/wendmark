@@ -15,9 +15,28 @@ const EnvSchema = z.object({
       'DATABASE_URL must be a Postgres connection string.',
     ),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+
+  /** Signs session cookies. Generate one with `openssl rand -base64 32`. */
+  AUTH_SECRET: z
+    .string({ error: 'AUTH_SECRET is required. Generate one with: openssl rand -base64 32' })
+    .min(32, 'AUTH_SECRET should be at least 32 characters.'),
+
+  /**
+   * Single sign-on, off unless all three are set. Works with any OpenID
+   * Connect provider: Entra ID, Google Workspace, Keycloak, Okta.
+   */
+  OIDC_ISSUER: z.string().url().optional(),
+  OIDC_CLIENT_ID: z.string().min(1).optional(),
+  OIDC_CLIENT_SECRET: z.string().min(1).optional(),
+  OIDC_NAME: z.string().min(1).default('single sign-on'),
 })
 
 export type Env = z.infer<typeof EnvSchema>
+
+/** Whether single sign-on is configured. */
+export function hasOidc(env: Env): boolean {
+  return Boolean(env.OIDC_ISSUER && env.OIDC_CLIENT_ID && env.OIDC_CLIENT_SECRET)
+}
 
 /** Reads and checks environment values, explaining anything that is wrong. */
 export function parseEnv(source: Record<string, string | undefined>): Env {
