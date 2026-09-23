@@ -11,6 +11,15 @@ export interface RecordingOptions {
   doc?: Document
   view?: Window
   name?: string
+  /** Told about each step as it is recorded, for a live step list. */
+  onStep?: (step: ActionStep | InputStep) => void
+  /** Whether to ignore clicks for now, so setup does not become steps. */
+  isPaused?: () => boolean
+  /**
+   * Whether to show the "Recording" badge. The recorder panel has its own
+   * indicator, so it turns this off rather than showing two.
+   */
+  showBadge?: boolean
 }
 
 /** A recording in progress. */
@@ -103,8 +112,9 @@ export function startRecording(options: RecordingOptions = {}): Recording {
   let lastElement: Element | null = null
   let recording = true
 
-  const overlay = createOverlay(doc)
-  const badge = createRecordingBadge(overlay.root, doc)
+  const showBadge = options.showBadge ?? true
+  const overlay = showBadge ? createOverlay(doc) : null
+  const badge = overlay ? createRecordingBadge(overlay.root, doc) : null
 
   /**
    * Observe only: capture phase so a click that navigates is still seen,
@@ -112,6 +122,7 @@ export function startRecording(options: RecordingOptions = {}): Recording {
    */
   function onClick(event: Event): void {
     if (!recording || steps.length >= MAX_STEPS) return
+    if (options.isPaused?.()) return
     const clicked = deepTarget(event)
     if (!clicked) return
     // Never record the user using Wendmark's own controls.
@@ -124,13 +135,15 @@ export function startRecording(options: RecordingOptions = {}): Recording {
     lastElement = element
 
     const target: Target = { ...fingerprint(element), url: pagePath(view.location.href) }
-    steps.push({
+    const step: ActionStep = {
       type: 'action',
       id: `s${steps.length + 1}`,
       text: describe(target),
       dynamic: false,
       target,
-    })
+    }
+    steps.push(step)
+    options.onStep?.(step)
   }
 
   /**
@@ -140,6 +153,7 @@ export function startRecording(options: RecordingOptions = {}): Recording {
    */
   function onChange(event: Event): void {
     if (!recording) return
+    if (options.isPaused?.()) return
     const changed = deepTarget(event)
     if (!changed) return
     if (event.composedPath().some(isOurs)) return
@@ -152,12 +166,14 @@ export function startRecording(options: RecordingOptions = {}): Recording {
     if (last && lastElement === element) steps.pop()
 
     lastElement = element
-    steps.push({
+    const step: InputStep = {
       type: 'input',
       id: `s${steps.length + 1}`,
       text: describeInput(target),
       target,
-    })
+    }
+    steps.push(step)
+    options.onStep?.(step)
   }
 
   doc.addEventListener('click', onClick, { capture: true, passive: true })
@@ -168,8 +184,8 @@ export function startRecording(options: RecordingOptions = {}): Recording {
       recording = false
       doc.removeEventListener('click', onClick, true)
       doc.removeEventListener('change', onChange, true)
-      badge.destroy()
-      overlay.destroy()
+      badge?.destroy()
+      overlay?.destroy()
       return {
         schemaVersion: 1,
         id: `recording-${Date.now()}`,

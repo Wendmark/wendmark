@@ -93,4 +93,10 @@ describe('keeping a recording readable', () => {
     recording = null
     expect(document.querySelector(OVERLAY_TAG)).toBeNull()
   })
+
+  it('can leave the badge to something else, such as the recorder panel', () => {
+    renderPage()
+    recording = startRecording({ doc: document, view: window, showBadge: false })
+    expect(document.querySelector(OVERLAY_TAG)).toBeNull()
+  })
 })

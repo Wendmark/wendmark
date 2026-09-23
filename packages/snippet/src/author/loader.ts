@@ -1,4 +1,19 @@
+import type { Flow } from '@wendmark/core'
 import type { AuthorSession } from './pairing'
+import type { Recording, RecordingOptions } from '../recorder/recorder'
+
+/**
+ * What the already-loaded snippet lends to the authoring bundle.
+ *
+ * Passing these in rather than importing them keeps author.js small: the
+ * player, recorder and element engine are in the page already, and a second
+ * copy would be wasted bytes.
+ */
+export interface SnippetApi {
+  startFlow: (flow: Flow, options?: { onEnd?: () => void }) => void
+  stopFlow: () => void
+  startRecording: (options: RecordingOptions) => Recording
+}
 
 /**
  * The authoring UI is a separate file, fetched only for the few people who
@@ -14,6 +29,7 @@ export interface AuthorContext {
   portalOrigin: string
   doc: Document
   view: Window
+  api: SnippetApi
 }
 
 export interface AuthorApi {
