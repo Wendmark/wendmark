@@ -1,46 +1,32 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { startAuthoring } from '../../../../actions/authoring'
+import { useState } from 'react'
+import { approveWaitingRecorder } from '../../../../actions/authoring'
 
-/** Messages exchanged with the snippet in the customer's app. */
-const HELLO = 'wendmark:author:hello'
-const TOKEN = 'wendmark:author:token'
+/** How long to keep waiting for the app to ask, and how often to check. */
+const WAIT_TIMEOUT_MS = 45_000
+const CHECK_INTERVAL_MS = 1_000
 
-/** How long to wait for the snippet to say hello before giving up. */
-const HANDSHAKE_TIMEOUT_MS = 20_000
-
-type Status = 'idle' | 'opening' | 'waiting' | 'handed-over' | 'failed'
+type Status = 'idle' | 'waiting' | 'recording' | 'failed'
 
 /**
  * Sends the author into their own app to record.
  *
- * Opens the app in a new tab with a hint in the address — not a secret — then
- * waits for the snippet there to ask for credentials, and replies to that tab
- * alone. Nothing sensitive is ever in the URL.
+ * Opens the app in a new tab with a hint in the address — no secret — and
+ * waits for the snippet there to ask permission. This click is the approval;
+ * the portal grants it when the request arrives. Nothing is passed between
+ * windows, which is what makes this work on apps that set
+ * Cross-Origin-Opener-Policy.
  */
 export function RecordButton({ appId, origins }: { appId: string; origins: string[] }) {
   const [origin, setOrigin] = useState(origins[0] ?? '')
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   async function record(): Promise<void> {
     setError(null)
-    setStatus('opening')
 
-    const permission = await startAuthoring(appId, origin)
-    if (!permission.ok) {
-      setError(permission.error)
-      setStatus('failed')
-      return
-    }
-
-    // Plain values, so the closures below keep their types.
-    const token = permission.token
-    const appOrigin = permission.origin
-
-    const target = window.open(`${appOrigin}/#wm=author`, '_blank')
+    const target = window.open(`${origin}/#wm=author`, '_blank')
     if (!target) {
       setError('Your browser blocked the new tab. Allow pop-ups for the portal and try again.')
       setStatus('failed')
@@ -48,28 +34,27 @@ export function RecordButton({ appId, origins }: { appId: string; origins: strin
     }
 
     setStatus('waiting')
+    const until = Date.now() + WAIT_TIMEOUT_MS
 
-    function onMessage(event: MessageEvent): void {
-      if (event.origin !== appOrigin) return
-      if ((event.data as { type?: string } | null)?.type !== HELLO) return
+    while (Date.now() < until) {
+      const result = await approveWaitingRecorder(appId, origin)
 
-      target?.postMessage({ type: TOKEN, token }, appOrigin)
-      cleanUp()
-      setStatus('handed-over')
+      if (result.status === 'approved') {
+        setStatus('recording')
+        return
+      }
+      if (result.status === 'error') {
+        setError(result.error)
+        setStatus('failed')
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, CHECK_INTERVAL_MS))
     }
 
-    function cleanUp(): void {
-      window.removeEventListener('message', onMessage)
-      if (timer.current) clearTimeout(timer.current)
-      timer.current = null
-    }
-
-    window.addEventListener('message', onMessage)
-    timer.current = setTimeout(() => {
-      cleanUp()
-      setStatus('failed')
-      setError('The snippet did not answer. Check it is installed on that address, then try again.')
-    }, HANDSHAKE_TIMEOUT_MS)
+    setStatus('failed')
+    setError(
+      'Your app never asked to record. Check the snippet is installed on that address, and that you are signed into it.',
+    )
   }
 
   return (
@@ -77,7 +62,11 @@ export function RecordButton({ appId, origins }: { appId: string; origins: strin
       {origins.length > 1 ? (
         <label>
           Record on
-          <select value={origin} onChange={(event) => setOrigin(event.target.value)}>
+          <select
+            value={origin}
+            onChange={(event) => setOrigin(event.target.value)}
+            disabled={status === 'waiting'}
+          >
             {origins.map((candidate) => (
               <option key={candidate} value={candidate}>
                 {candidate}
@@ -96,8 +85,8 @@ export function RecordButton({ appId, origins }: { appId: string; origins: strin
           Your app opened in a new tab. Sign in there if you need to, and the recorder will appear.
         </p>
       ) : null}
-      {status === 'handed-over' ? (
-        <p className="seen">✓ Recording started in the other tab.</p>
+      {status === 'recording' ? (
+        <p className="seen">✓ Recording in the other tab. Come back here when you are done.</p>
       ) : null}
       {error ? <p role="alert">{error}</p> : null}
     </div>

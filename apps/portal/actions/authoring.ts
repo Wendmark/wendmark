@@ -1,29 +1,31 @@
 'use server'
 
 import { requireUser } from '../lib/auth/session'
-import { issueAuthorToken } from '../lib/auth/author-tokens'
+import { approvePairing, listPendingPairings } from '../lib/auth/pairing'
 
-export type StartAuthoringResult =
-  { ok: true; token: string; origin: string } | { ok: false; error: string }
+export type WaitResult =
+  | { status: 'approved'; origin: string }
+  | { status: 'waiting' }
+  | { status: 'error'; error: string }
 
 /**
- * Permission to record, for one app, at one address, for one minute.
+ * Approves a snippet that is asking to record.
  *
- * The token goes to the browser, which hands it to the snippet in the
- * customer's app through a message between tabs — never in the address bar.
- * See docs/decisions/author-mode.md.
+ * The portal page calls this while the author waits: their click on "Record
+ * a process" is the approval, and this matches it to the request that
+ * arrives from their app moments later. The origin must be one the app is
+ * registered on, so another site cannot slip in.
  */
-export async function startAuthoring(appId: string, origin: string): Promise<StartAuthoringResult> {
+export async function approveWaitingRecorder(appId: string, origin: string): Promise<WaitResult> {
   const user = await requireUser()
+  const ctx = { userId: user.id, organizationId: user.organizationId, role: user.role }
 
-  const result = await issueAuthorToken({
-    userId: user.id,
-    role: user.role,
-    organizationId: user.organizationId,
-    appId,
-    origin,
-  })
+  const pending = await listPendingPairings(ctx, appId)
+  const match = pending.find((request) => request.origin === origin)
+  if (!match) return { status: 'waiting' }
 
-  if (!result.ok) return { ok: false, error: result.reason }
-  return { ok: true, token: result.token, origin: result.origin }
+  const approved = await approvePairing(ctx, appId, match.id)
+  if (!approved.ok) return { status: 'error', error: approved.reason }
+
+  return { status: 'approved', origin: approved.origin }
 }
