@@ -115,11 +115,12 @@ model App {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  flows          Flow[]
-  sightings      OriginSighting[]
-  authorTokens   AuthorToken[]
-  authorSessions AuthorSession[]
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  flows           Flow[]
+  sightings       OriginSighting[]
+  authorTokens    AuthorToken[]
+  authorSessions  AuthorSession[]
+  pairingRequests PairingRequest[]
 
   @@index([organizationId])
   @@map("app")
@@ -148,6 +149,33 @@ model AuthorToken {
 
   @@index([appId])
   @@map("author_token")
+}
+
+/// A request from a snippet to start recording, waiting for the portal to
+/// approve it.
+///
+/// The snippet invents a code and asks; the portal, where the person is
+/// actually signed in, approves. Nothing secret travels through a URL, and
+/// no window needs to talk to another window — which matters, because
+/// Cross-Origin-Opener-Policy severs that on many apps. See
+/// docs/decisions/author-mode.md.
+model PairingRequest {
+  id           String   @id @default(uuid()) @db.Uuid
+  /// SHA-256 of the code the snippet invented. The code itself is never stored.
+  codeHash     String   @unique
+  appId        String   @db.Uuid
+  origin       String
+  approved     Boolean  @default(false)
+  /// Set when approved, collected once by the snippet, then the row is gone.
+  sessionToken String?
+  approvedById String?  @db.Uuid
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@index([appId, approved])
+  @@map("pairing_request")
 }
 
 /// A redeemed author token: permission to save drafts for one app, from one

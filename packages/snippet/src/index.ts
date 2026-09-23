@@ -12,6 +12,7 @@ import type { Flow } from '@wendmark/core'
 import { looksLikeFlow } from '@wendmark/core/guard'
 import { startFlow, type Player } from './player/player'
 import { clearProgress, loadProgress } from './player/progress'
+import { startAuthorModeIfAsked } from './author/start'
 import { sendInstallPing } from './install/ping'
 import { startRecording, type Recording, type RecordingOptions } from './recorder/recorder'
 
@@ -28,6 +29,10 @@ export const version = '0.0.0'
 // Tell the portal the snippet is installed, so its page can stop saying
 // "waiting". Fire and forget: nothing here blocks the host page.
 sendInstallPing(document, window, version)
+
+// If the portal sent someone here to record a process, pick that up. A
+// visitor who was not sent by the portal never notices any of this.
+void startAuthorModeIfAsked(document, window)
 
 /** Only one flow is guided at a time. */
 let current: Player | null = null

@@ -15,23 +15,35 @@ process** has to carry one fact across the gap:
 
 ## What we chose
 
-The portal opens the app in a new tab and sends the proof as a **message
-between the two tabs**, not in the address.
+**A pairing flow.** The snippet asks to record; the portal, where the person
+is signed in, approves. Nothing secret travels through a URL, and no window
+has to talk to another window.
 
 ```
-1. Portal opens the app, keeping a handle on the new tab.
+1. You click "Record a process" in the portal.
+   It opens your app at  https://app.example.com/profile#wm=author
+   — a hint, not a secret.
 
-   PORTAL  ── window.open() ──▶  APP   https://app.example.com/profile#wm=author
-                                       (a hint, not a secret)
+2. The snippet sees the hint, invents a random code, and tells the portal:
+   "app KEY at origin app.example.com would like to record, code C".
+   Nothing has been granted. The code is useless on its own.
 
-2. The snippet sees the hint and asks its opener for credentials,
-   addressing the portal's origin explicitly.
+3. The portal tab — where you are signed in — sees that request, checks the
+   origin is on the app's list, and approves it. Your click was the approval;
+   there is no second button to press.
 
-3. The portal checks the request came from an origin registered for that
-   app, and replies to that tab alone with a short-lived token.
-
-4. The snippet exchanges the token for an author session and clears the hint.
+4. The snippet exchanges its code for an author session, once. The pairing
+   request is deleted as it is collected.
 ```
+
+### Why not pass a message between the two tabs
+
+This was the original choice, and it does not work reliably. `window.opener`
+is missing in embedded browsers, and any app that sets
+**`Cross-Origin-Opener-Policy: same-origin`** — ordinary security hardening —
+severs window-to-window messaging permanently. We do not control customers'
+headers, so a design that depends on them is a design that breaks for the
+most security-conscious customers.
 
 ## Why not the alternatives
 
@@ -59,7 +71,8 @@ So the protection is in what a stolen token is worth, not in hiding it:
 - **Drafts only.** An author session may create and edit drafts. Publishing
   happens in the portal, in a session an attacker does not have. The worst
   realistic outcome is a junk draft and an audit entry.
-- **Sixty seconds, single use**, bound to one user, one app and one origin.
+- **Ninety seconds, single use**, bound to one app and one origin, approved
+  by a named user.
 - **Audited**: who authored, which app, which origin, when.
 - **Revocable**: rotating an app's key invalidates live author sessions.
 
@@ -67,7 +80,11 @@ So the protection is in what a stolen token is worth, not in hiding it:
 
 - Author mode needs the snippet already installed in the app. An app we
   cannot add a script to needs a browser extension, which is a later option.
-- The handshake lives behind `lib/auth/author-tokens.ts` on the server and one
-  module in the snippet, so swapping the transport later is contained.
+- Pairing lives in `lib/auth/pairing.ts` on the server and
+  `src/author/pairing.ts` in the snippet, so changing how it works later is
+  contained.
+- The portal waits while the request arrives, which takes a second or two.
+- Approving in the portal is where permission is decided, which is the same
+  place publishing happens.
 - The person must be signed into their own app already; the token only
   authorises saving to the portal.

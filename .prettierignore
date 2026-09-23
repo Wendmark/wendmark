@@ -5,4 +5,5 @@ pnpm-lock.yaml
 dist/
 coverage/
 apps/portal/public/snippet.js
+apps/portal/public/author.js
 apps/portal/next-env.d.ts
