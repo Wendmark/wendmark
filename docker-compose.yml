@@ -1,0 +1,28 @@
+# Postgres for local development of the portal.
+#
+#   docker compose up -d
+#   pnpm --filter @wendmark/portal db:migrate
+#
+# Port 5433 on purpose: 5432 is usually taken by another database already
+# running on a developer's machine.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: wendmark-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wendmark
+      POSTGRES_PASSWORD: wendmark
+      POSTGRES_DB: wendmark
+    ports:
+      - '5433:5432'
+    volumes:
+      - wendmark-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U wendmark']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  wendmark-postgres:
