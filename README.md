@@ -33,9 +33,14 @@ automatically.
 ```bash
 corepack enable
 pnpm install
-cp .env.example .env   # optional, nothing is required yet
+docker compose up -d                       # Postgres for the portal
+cp apps/portal/.env.example apps/portal/.env
+pnpm --filter @wendmark/portal db:migrate   # apply migrations
 pnpm dev
 ```
+
+Already have a Postgres you would rather use? Point `DATABASE_URL` at it and
+skip the compose file.
 
 `pnpm dev` starts:
 
