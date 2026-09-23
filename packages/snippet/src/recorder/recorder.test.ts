@@ -54,16 +54,20 @@ describe('recording a process', () => {
     expect(step.target.selectors.join(' ')).toContain('save')
   })
 
-  it('notes which page each step happened on', () => {
+  it('notes which page each step happened on, without the origin', () => {
+    // A flow recorded on a laptop has to work in production, so only the
+    // page part is kept — no origin, no query string.
     renderPage()
+    history.pushState({}, '', '/orders?customer=alex@example.com')
     recording = startRecording({ doc: document, view: window })
     click('save')
 
     const flow = recording.stop()
     recording = null
+    history.pushState({}, '', '/')
     const [step] = flow.steps
     if (step?.type !== 'action') throw new Error('expected an action step')
-    expect(step.target.url).toBe(location.href)
+    expect(step.target.url).toBe('/orders')
   })
 
   it('writes an instruction a person can read', () => {
