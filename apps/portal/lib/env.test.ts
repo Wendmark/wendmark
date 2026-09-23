@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { getEnv, parseEnv } from './env'
+import { getEnv, hasOidc, parseEnv } from './env'
 
-const valid = { DATABASE_URL: 'postgresql://user:pass@localhost:5432/wendmark' }
+const valid = {
+  DATABASE_URL: 'postgresql://user:pass@localhost:5432/wendmark',
+  AUTH_SECRET: 'a'.repeat(32),
+}
 
 describe('parseEnv', () => {
   it('accepts a Postgres connection string', () => {
@@ -31,6 +34,31 @@ describe('parseEnv', () => {
 
   it('reads the real environment on first use, not on import', () => {
     process.env['DATABASE_URL'] = valid.DATABASE_URL
+    process.env['AUTH_SECRET'] = valid.AUTH_SECRET
     expect(getEnv().DATABASE_URL).toBe(valid.DATABASE_URL)
+  })
+})
+
+describe('single sign-on', () => {
+  const oidc = {
+    OIDC_ISSUER: 'https://login.example.com',
+    OIDC_CLIENT_ID: 'wendmark',
+    OIDC_CLIENT_SECRET: 'secret',
+  }
+
+  it('is off when nothing is configured', () => {
+    expect(hasOidc(parseEnv(valid))).toBe(false)
+  })
+
+  it('is on when the issuer, id and secret are all set', () => {
+    expect(hasOidc(parseEnv({ ...valid, ...oidc }))).toBe(true)
+  })
+
+  it('stays off when the configuration is half finished', () => {
+    expect(hasOidc(parseEnv({ ...valid, OIDC_ISSUER: oidc.OIDC_ISSUER }))).toBe(false)
+  })
+
+  it('rejects an issuer that is not a URL, rather than failing at sign-in', () => {
+    expect(() => parseEnv({ ...valid, ...oidc, OIDC_ISSUER: 'login.example.com' })).toThrow()
   })
 })

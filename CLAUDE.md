@@ -88,8 +88,15 @@ pnpm --filter @wendmark/portal db:migrate   # create and apply a migration
 pnpm --filter @wendmark/portal db:studio    # browse the data
 ```
 
-The portal reads `DATABASE_URL` from `apps/portal/.env`, validated by
-`lib/env.ts`. The generated Prisma client lives in `apps/portal/generated/`
+Authentication is Auth.js with an email and password by default, and optional
+OIDC single sign-on. Sessions are JWTs; `user.sessionVersion` is how a session
+is revoked. Everything that reads a session goes through
+`lib/auth/session.ts`, so that decision stays in one place — see
+`docs/decisions/auth.md`. `/setup` creates the first administrator and works
+only while no users exist.
+
+The portal reads `DATABASE_URL` and `AUTH_SECRET` from `apps/portal/.env`,
+validated by `lib/env.ts`. The generated Prisma client lives in `apps/portal/generated/`
 and is gitignored; a `postinstall` hook regenerates it after every install,
 including in CI. Run `db:generate` yourself after changing the schema, and
 never import Prisma from anywhere but `lib/db.ts`.
