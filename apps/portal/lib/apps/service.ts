@@ -1,6 +1,7 @@
 import type { App } from '../../generated/prisma/client'
 import { getDb } from '../db'
 import { require as requirePermission } from '../permissions'
+import { revokeAuthorSessions } from '../auth/author-tokens'
 import { generatePublicKey } from './keys'
 import { parseOrigins } from './origins'
 
@@ -141,10 +142,13 @@ export async function rotateKey(ctx: Context, appId: string): Promise<App> {
   const existing = await getApp(ctx, appId)
   if (!existing) throw new NotFoundError()
 
-  return getDb().app.update({
+  const updated = await getDb().app.update({
     where: { id: existing.id },
     data: { publicKey: generatePublicKey() },
   })
+  // Anyone recording against the old key loses their session too.
+  await revokeAuthorSessions(existing.id)
+  return updated
 }
 
 /** Deletes an app and everything recorded for it. Not recoverable. */
