@@ -29,12 +29,22 @@ export function App() {
         <Link to="/" className="brand">
           Fika
         </Link>
+        {/*
+          A developer harness, not how a customer would normally use Wendmark.
+          These buttons call the snippet's API directly with a hand-written
+          flow, which is the quickest way to exercise the engine while
+          working on it. The product path is: record from the portal, publish
+          there, and let users find flows in the launcher.
+        */}
+        <span className="harness-label" title="Developer harness, not the product path">
+          Dev harness
+        </span>
         <button
           type="button"
           className="guide-button"
           onClick={() => window.Wendmark?.start(changeGrindFlow)}
         >
-          Guide me
+          Play demo flow
         </button>
         <button
           type="button"
@@ -52,7 +62,7 @@ export function App() {
             }
           }}
         >
-          {recording ? 'Stop and replay' : 'Record'}
+          {recording ? 'Stop and replay' : 'Record by hand'}
         </button>
         <nav aria-label="Main">
           {routes.map((r) => (

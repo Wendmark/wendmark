@@ -62,4 +62,12 @@ describe('the snippet API', () => {
     stop()
     expect(() => stop()).not.toThrow()
   })
+
+  it('tells the caller when a flow ends, however it ended', () => {
+    renderPage()
+    let ended = 0
+    start(flow, { onEnd: () => (ended += 1) })
+    stop()
+    expect(ended).toBe(1)
+  })
 })

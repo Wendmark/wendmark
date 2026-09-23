@@ -1,60 +1,122 @@
 /**
  * The authoring bundle: everything only a person recording a process needs.
  *
- * Built as its own file and fetched on demand, so it costs ordinary visitors
- * nothing. The recorder panel lands here next.
+ * Built as its own file and fetched on demand, so it costs ordinary
+ * visitors nothing.
  */
-import type { AuthorContext } from './loader'
 import { createOverlay } from '../overlay/overlay'
+import {
+  addNote,
+  addStep,
+  canSave,
+  emptyDraft,
+  moveStep,
+  removeStep,
+  renameDraft,
+  retitleStep,
+  setDynamic,
+  toFlow,
+  type Draft,
+} from './draft'
+import type { AuthorContext } from './loader'
+import { createRecorderPanel } from './panel'
 
-const BADGE_CSS = `
-  [data-wendmark="author-badge"] {
-    position: fixed;
-    left: 16px;
-    bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    background: #1c1b22;
-    color: #f5f4fa;
-    font: 600 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-    pointer-events: auto;
-  }
-  [data-wendmark="author-badge"] button {
-    font: inherit;
-    font-size: 11px;
-    padding: 3px 9px;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    border-radius: 999px;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-  }
-`
-
-/** Starts authoring in this page. Called by the snippet once it has a session. */
+/**
+ * Starts authoring in this page: record what the author does, show it in a
+ * panel they can fix as they go, and let them try it before saving.
+ */
 export function start(context: AuthorContext): void {
-  const { doc } = context
+  const { doc, view } = context
+
   const overlay = createOverlay(doc)
+  let draft: Draft = emptyDraft('Untitled process')
+  let paused = false
+  let saving = false
+  let message: string | null = null
 
-  const style = doc.createElement('style')
-  style.textContent = BADGE_CSS
-  overlay.root.appendChild(style)
+  const panel = createRecorderPanel(overlay.root, doc, {
+    onRename: (name) => update(renameDraft(draft, name)),
+    onRetitle: (id, text) => update(retitleStep(draft, id, text)),
+    onRemove: (id) => update(removeStep(draft, id)),
+    onMove: (id, direction) => update(moveStep(draft, id, direction)),
+    onToggleDynamic: (id) => {
+      const step = draft.steps.find((candidate) => candidate.id === id)
+      const dynamic = step?.type === 'action' ? !step.dynamic : false
+      update(setDynamic(draft, id, dynamic))
+    },
+    onAddNote: () => {
+      const text = view.prompt('What should the user read at this point?')
+      if (text) update(addNote(draft, text))
+    },
+    onTogglePause: () => {
+      paused = !paused
+      say(paused ? 'Paused. Clicks are not being recorded.' : null)
+    },
+    onTest: () => testDraft(),
+    onSave: () => void saveDraft(),
+    onCancel: () => stop(),
+  })
 
-  const badge = doc.createElement('div')
-  badge.dataset.wendmark = 'author-badge'
+  // Record what the author does, using the snippet already on the page.
+  // Steps arrive here as they happen.
+  const recording = context.api.startRecording({
+    doc,
+    view,
+    // The panel has its own recording light; two would be noise.
+    showBadge: false,
+    isPaused: () => paused,
+    onStep: (step) => update(addStep(draft, step)),
+  })
 
-  const label = doc.createElement('span')
-  label.textContent = 'Author mode'
+  function update(next: Draft): void {
+    draft = next
+    render()
+  }
 
-  const exit = doc.createElement('button')
-  exit.type = 'button'
-  exit.textContent = 'Exit'
-  exit.addEventListener('click', () => overlay.destroy())
+  function say(text: string | null): void {
+    message = text
+    render()
+  }
 
-  badge.append(label, exit)
-  overlay.root.appendChild(badge)
+  function render(): void {
+    panel.render({ draft, paused, saving, message })
+  }
+
+  /**
+   * Plays the draft back, so the author sees what the user will see.
+   *
+   * Recording pauses during the test — the author is clicking through what
+   * they already recorded — and resumes the moment the test ends, so the
+   * next real click is not silently swallowed.
+   */
+  function testDraft(): void {
+    if (!canSave(draft)) return
+    paused = true
+    say('Testing. Recording pauses until the test finishes.')
+    context.api.startFlow(toFlow(draft, `draft-${Date.now()}`), {
+      onEnd: () => {
+        paused = false
+        say('Test finished. Recording again.')
+      },
+    })
+  }
+
+  async function saveDraft(): Promise<void> {
+    if (!canSave(draft) || saving) return
+    saving = true
+    say('Saving to the portal…')
+    // Sending the draft to the portal comes next; for now this only proves
+    // the panel's own flow.
+    await Promise.resolve()
+    saving = false
+    say('Saving is not wired up yet.')
+  }
+
+  function stop(): void {
+    recording.stop()
+    panel.destroy()
+    overlay.destroy()
+  }
+
+  render()
 }

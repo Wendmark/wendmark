@@ -32,7 +32,11 @@ sendInstallPing(document, window, version)
 
 // If the portal sent someone here to record a process, pick that up. A
 // visitor who was not sent by the portal never notices any of this.
-void startAuthorModeIfAsked(document, window)
+void startAuthorModeIfAsked(document, window, {
+  startFlow: start,
+  stopFlow: stop,
+  startRecording,
+})
 
 /** Only one flow is guided at a time. */
 let current: Player | null = null
@@ -58,7 +62,7 @@ export function stopRecording(): Flow | null {
 }
 
 /** Starts guiding the user through a flow. Replaces any flow already running. */
-export function start(flow: Flow): Player {
+export function start(flow: Flow, options: { onEnd?: () => void } = {}): Player {
   if (!looksLikeFlow(flow)) {
     throw new Error('Wendmark: this flow does not have the shape of a playable flow.')
   }
@@ -67,9 +71,11 @@ export function start(flow: Flow): Player {
   current = startFlow(flow, {
     onFinish: () => {
       current = null
+      options.onEnd?.()
     },
     onStop: () => {
       current = null
+      options.onEnd?.()
     },
   })
   return current
