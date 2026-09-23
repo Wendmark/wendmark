@@ -68,6 +68,10 @@ Rules worth knowing:
 - **`dynamic: true`** when the target is one of the user's own items (an order,
   a coffee, a row) rather than fixed UI. The player then highlights the whole
   group and lets the user choose.
+- **Pages are stored as paths.** A step remembers `/profile`, not
+  `http://localhost:5174/profile`, so a flow recorded on a laptop works in
+  staging and production. Query strings are dropped: they carry data, and
+  sometimes personal data.
 - **Three kinds of step.** `action` (the user clicks something), `input` (the
   user fills a field in — it completes when they change it, and what they put
   in is never recorded), and `instruction` (text only, no target).
