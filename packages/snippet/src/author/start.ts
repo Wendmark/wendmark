@@ -1,5 +1,5 @@
 import { appKey, portalOrigin } from '../install/ping'
-import { loadAuthorBundle } from './loader'
+import { loadAuthorBundle, type SnippetApi } from './loader'
 import { askToRecord, clearHint, generateCode, waitForApproval, wantsAuthorMode } from './pairing'
 
 /**
@@ -9,7 +9,11 @@ import { askToRecord, clearHint, generateCode, waitForApproval, wantsAuthorMode 
  * fetch the authoring interface. Anything that fails leaves the page exactly
  * as it was: a visitor must never see a trace of this.
  */
-export async function startAuthorModeIfAsked(doc: Document, view: Window): Promise<void> {
+export async function startAuthorModeIfAsked(
+  doc: Document,
+  view: Window,
+  api: SnippetApi,
+): Promise<void> {
   if (!wantsAuthorMode(view)) return
   clearHint(view)
 
@@ -24,5 +28,5 @@ export async function startAuthorModeIfAsked(doc: Document, view: Window): Promi
   if (!session) return
 
   const author = await loadAuthorBundle(doc, view, portal)
-  author?.start({ session, portalOrigin: portal, doc, view })
+  author?.start({ session, portalOrigin: portal, doc, view, api })
 }

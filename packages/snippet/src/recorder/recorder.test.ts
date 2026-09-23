@@ -154,4 +154,35 @@ describe('recording a process', () => {
     if (step?.type !== 'action') throw new Error('expected an action step')
     expect(step.target.selectors.join(' ')).toContain('card')
   })
+
+  it('reports each step as it happens, for a live list', () => {
+    renderPage()
+    const seen: string[] = []
+    recording = startRecording({
+      doc: document,
+      view: window,
+      onStep: (step) => seen.push(step.text),
+    })
+
+    click('orders-link')
+    click('save')
+
+    recording.stop()
+    recording = null
+    expect(seen).toEqual(['Go to Orders', 'Click Save changes'])
+  })
+
+  it('ignores clicks while paused, so setup does not become steps', () => {
+    renderPage()
+    let paused = true
+    recording = startRecording({ doc: document, view: window, isPaused: () => paused })
+
+    click('orders-link')
+    paused = false
+    click('save')
+
+    const flow = recording.stop()
+    recording = null
+    expect(flow.steps.map((step) => step.text)).toEqual(['Click Save changes'])
+  })
 })
