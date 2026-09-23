@@ -47,9 +47,11 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  memberships Membership[]
-  accounts    Account[]
-  flows       Flow[]       @relation("FlowAuthor")
+  memberships    Membership[]
+  accounts       Account[]
+  flows          Flow[]          @relation("FlowAuthor")
+  authorTokens   AuthorToken[]
+  authorSessions AuthorSession[]
 
   @@map("user")
 }
@@ -113,12 +115,59 @@ model App {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  flows        Flow[]
-  sightings    OriginSighting[]
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  flows          Flow[]
+  sightings      OriginSighting[]
+  authorTokens   AuthorToken[]
+  authorSessions AuthorSession[]
 
   @@index([organizationId])
   @@map("app")
+}
+
+/// A one-time permission to record flows for an app, issued by the portal
+/// and handed to the snippet running in the customer's app.
+///
+/// Short-lived and single use: the row records that it was issued, and
+/// `usedAt` that it has been spent. Drafts only — publishing happens in the
+/// portal, so a stolen token cannot put anything in front of end users.
+model AuthorToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  /// SHA-256 of the token. The token itself is never stored.
+  tokenHash String    @unique
+  appId     String    @db.Uuid
+  userId    String    @db.Uuid
+  /// The origin this token may be redeemed from.
+  origin    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  app  App  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([appId])
+  @@map("author_token")
+}
+
+/// A redeemed author token: permission to save drafts for one app, from one
+/// origin, until it expires. Stored rather than signed, so it can be revoked.
+model AuthorSession {
+  id         String    @id @default(uuid()) @db.Uuid
+  /// SHA-256 of the session token. The token itself is never stored.
+  tokenHash  String    @unique
+  appId      String    @db.Uuid
+  userId     String    @db.Uuid
+  origin     String
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  app  App  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([appId])
+  @@map("author_session")
 }
 
 /// An address that used an app's key but is not on its allowlist.

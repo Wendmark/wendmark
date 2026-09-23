@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { getApp, listUnknownOrigins } from '../../../../lib/apps/service'
 import { requireUser } from '../../../../lib/auth/session'
 import { can } from '../../../../lib/permissions'
+import { RecordButton } from './record-button'
 import { UnknownOrigins } from './unknown-origins'
 
 /** What a single app looks like: how to install it, and what it holds. */
@@ -46,7 +47,12 @@ export default async function AppPage({ params }: { params: Promise<{ appId: str
       ) : null}
 
       <h2>Processes</h2>
-      <p className="muted">Recording processes comes next.</p>
+      {can(user.role, 'flow:create') ? (
+        <RecordButton appId={app.id} origins={app.origins} />
+      ) : (
+        <p className="muted">Your role can view processes but not record them.</p>
+      )}
+      <p className="muted">No processes yet.</p>
     </section>
   )
 }
