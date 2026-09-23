@@ -75,6 +75,15 @@ So the protection is in what a stolen token is worth, not in hiding it:
   by a named user.
 - **Audited**: who authored, which app, which origin, when.
 - **Revocable**: rotating an app's key invalidates live author sessions.
+- **Bounded.** `POST /api/v1/author/flows` refuses a body over 128 KB or a
+  recording over 200 steps, counts saves per app, and validates the flow with
+  `FlowSchema` before anything is written. The app is taken from the session,
+  never from the request, so a session cannot write into another app.
+
+The rate limit is in memory, per process: a brake on a runaway script, not a
+defence against a determined attacker. A portal running several instances
+counts separately in each, and a deployment that needs a real limit should
+put one in its proxy.
 
 ## Consequences
 

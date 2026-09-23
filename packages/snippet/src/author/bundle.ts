@@ -20,6 +20,7 @@ import {
 } from './draft'
 import type { AuthorContext } from './loader'
 import { createRecorderPanel } from './panel'
+import { saveDraft as sendDraft } from './save'
 
 /**
  * Starts authoring in this page: record what the author does, show it in a
@@ -101,15 +102,33 @@ export function start(context: AuthorContext): void {
     })
   }
 
+  /**
+   * Sends the recording to the portal as a draft.
+   *
+   * Recording pauses while it is in flight and stays paused once it has been
+   * saved: the author is done, and a stray click should not quietly append a
+   * step to something they think they have finished.
+   */
   async function saveDraft(): Promise<void> {
     if (!canSave(draft) || saving) return
     saving = true
+    paused = true
     say('Saving to the portal…')
-    // Sending the draft to the portal comes next; for now this only proves
-    // the panel's own flow.
-    await Promise.resolve()
+
+    const result = await sendDraft(
+      context.portalOrigin,
+      context.session.sessionToken,
+      toFlow(draft, `draft-${Date.now()}`),
+    )
+
     saving = false
-    say('Saving is not wired up yet.')
+    if (!result.ok) {
+      paused = false
+      say(result.error)
+      return
+    }
+
+    say(`Saved as a draft. Open “${result.name}” in the portal to publish it.`)
   }
 
   function stop(): void {
