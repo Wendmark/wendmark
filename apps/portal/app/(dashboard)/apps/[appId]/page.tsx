@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { getApp, listUnknownOrigins } from '../../../../lib/apps/service'
 import { requireUser } from '../../../../lib/auth/session'
 import { can } from '../../../../lib/permissions'
+import { listFlows } from '../../../../lib/flows/service'
+import { Processes } from './processes'
 import { RecordButton } from './record-button'
 import { UnknownOrigins } from './unknown-origins'
 
@@ -15,6 +17,7 @@ export default async function AppPage({ params }: { params: Promise<{ appId: str
   if (!app) notFound()
 
   const unknownOrigins = await listUnknownOrigins(ctx, app.id)
+  const flows = await listFlows(ctx, app.id)
 
   return (
     <section>
@@ -52,7 +55,14 @@ export default async function AppPage({ params }: { params: Promise<{ appId: str
       ) : (
         <p className="muted">Your role can view processes but not record them.</p>
       )}
-      <p className="muted">No processes yet.</p>
+
+      <Processes
+        appId={app.id}
+        flows={flows}
+        canEdit={can(user.role, 'flow:create')}
+        canPublish={can(user.role, 'flow:publish')}
+        canDelete={can(user.role, 'flow:delete')}
+      />
     </section>
   )
 }
