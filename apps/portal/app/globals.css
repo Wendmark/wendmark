@@ -304,3 +304,17 @@ button.destructive {
   margin: 0.15rem 0 0;
   font-size: 0.85rem;
 }
+
+.versions {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.versions h2 {
+  margin-top: 0;
+}
+
+.versions .process-actions {
+  margin: 0.75rem 0 1.25rem;
+}
