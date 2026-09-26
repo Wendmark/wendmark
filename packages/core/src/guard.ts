@@ -31,10 +31,41 @@ function looksLikeStep(value: unknown): value is Step {
   return false
 }
 
+/**
+ * Why a flow cannot be played, when it cannot.
+ *
+ * "too-new" is worth telling apart from "malformed": one means the person
+ * running this page has an old copy of the snippet, which a reload fixes,
+ * and the other means the flow is wrong. See
+ * docs/decisions/flow-compatibility.md.
+ */
+export type FlowVerdict = 'ok' | 'too-new' | 'malformed'
+
+export function checkFlow(value: unknown): FlowVerdict {
+  if (!isRecord(value)) return 'malformed'
+
+  const version = value.schemaVersion
+  if (typeof version === 'number' && version > SCHEMA_VERSION) return 'too-new'
+  if (version !== SCHEMA_VERSION) return 'malformed'
+
+  if (!isNonEmptyString(value.id) || !isNonEmptyString(value.name)) return 'malformed'
+  if (!Array.isArray(value.steps) || value.steps.length === 0) return 'malformed'
+
+  // An unknown step type means a flow written by a newer Wendmark, even when
+  // the version says otherwise: step types are added without a version bump
+  // while nothing is published.
+  if (value.steps.some(isUnknownStepType)) return 'too-new'
+  return value.steps.every(looksLikeStep) ? 'ok' : 'malformed'
+}
+
 /** Whether a value has the shape of a flow this version can play. */
 export function looksLikeFlow(value: unknown): value is Flow {
-  if (!isRecord(value)) return false
-  if (value.schemaVersion !== SCHEMA_VERSION) return false
-  if (!isNonEmptyString(value.id) || !isNonEmptyString(value.name)) return false
-  return Array.isArray(value.steps) && value.steps.length > 0 && value.steps.every(looksLikeStep)
+  return checkFlow(value) === 'ok'
+}
+
+const KNOWN_TYPES = ['action', 'input', 'instruction']
+
+/** A step whose type this build has never heard of. */
+function isUnknownStepType(value: unknown): boolean {
+  return isRecord(value) && isNonEmptyString(value.type) && !KNOWN_TYPES.includes(value.type)
 }
