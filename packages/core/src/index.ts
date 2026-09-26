@@ -20,4 +20,5 @@ export type {
   StepType,
   Flow,
 } from './schemas'
-export { looksLikeFlow } from './guard'
+export { looksLikeFlow, checkFlow } from './guard'
+export type { FlowVerdict } from './guard'

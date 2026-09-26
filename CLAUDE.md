@@ -123,12 +123,12 @@ pass. For snippet changes, `pnpm size` must also pass.
 - Internal packages export TypeScript source (`exports: ./src/index.ts`). There
   is no per-package build, except the snippet bundle and the apps.
 - Schema changes that break existing flows bump `SCHEMA_VERSION` in core.
-  Adding an optional field does not (old flows still parse). Adding a step
-  type does not yet either, while nothing is published: today a new step type
-  only breaks an _old_ snippet meeting a _new_ flow. Once flows are served to
-  snippets we do not control, that case needs handling — either a version
-  bump the snippet checks, or a "minimum snippet version" on the flow. Decide
-  before the portal serves its first flow.
+  Adding an optional field does not: old snippets must ignore fields they do
+  not recognise, and `checkFlow` is written so they do. Adding a **step type**
+  is breaking — an old snippet cannot play it by ignoring it — and
+  `checkFlow` reports that as `too-new` by shape, whatever the version says.
+  The snippet sends the format version it understands and the portal serves
+  what that snippet can play. See `docs/decisions/flow-compatibility.md`.
 - Tests live next to the code as `*.test.ts`.
 - `legacy/` is reference only. Don't import from it, edit it, or port it. See
   `docs/legacy-notes.md` for what to learn from it.
