@@ -6,6 +6,7 @@ import {
   deleteFlowAction,
   duplicateFlowAction,
   pauseFlowAction,
+  publishFlowAction,
   type FormResult,
 } from '../../../../actions/flows'
 import { canPause, canResume, describeStatus } from '../../../../lib/flows/list'
@@ -32,9 +33,10 @@ export function Processes({ appId, flows, canEdit, canPublish, canDelete }: Proc
   const [pauseState, pause, pausing] = useActionState(pauseFlowAction, initial)
   const [copyState, duplicate, copying] = useActionState(duplicateFlowAction, initial)
   const [deleteState, remove, removing] = useActionState(deleteFlowAction, initial)
+  const [publishState, publish, publishing] = useActionState(publishFlowAction, initial)
   const [confirming, setConfirming] = useState<string | null>(null)
 
-  const error = pauseState.error ?? copyState.error ?? deleteState.error
+  const error = pauseState.error ?? copyState.error ?? deleteState.error ?? publishState.error
 
   if (flows.length === 0) {
     return (
@@ -61,6 +63,16 @@ export function Processes({ appId, flows, canEdit, canPublish, canDelete }: Proc
             </div>
 
             <div className="process-actions">
+              {canPublish && flow.needsPublish ? (
+                <form action={publish}>
+                  <input type="hidden" name="appId" value={appId} />
+                  <input type="hidden" name="flowId" value={flow.id} />
+                  <button type="submit" disabled={publishing || flow.steps === 0}>
+                    Publish
+                  </button>
+                </form>
+              ) : null}
+
               {canPublish && canPause(flow.status) ? (
                 <form action={pause}>
                   <input type="hidden" name="appId" value={appId} />

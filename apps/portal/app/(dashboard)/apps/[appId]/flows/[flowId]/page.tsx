@@ -2,8 +2,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireUser } from '../../../../../../lib/auth/session'
 import { getApp } from '../../../../../../lib/apps/service'
-import { getFlow } from '../../../../../../lib/flows/service'
-import { describeStatus } from '../../../../../../lib/flows/list'
+import { getFlow, listVersions, publishingState } from '../../../../../../lib/flows/service'
+import { describeStatus, stepCount } from '../../../../../../lib/flows/list'
+import { can } from '../../../../../../lib/permissions'
+import { Versions } from './versions'
 import { FlowSchema, type Step } from '@wendmark/core'
 
 /**
@@ -28,6 +30,8 @@ export default async function FlowPage({
 
   const steps = readSteps(flow.steps)
   const recordedBy = flow.createdBy?.name ?? flow.createdBy?.email ?? null
+  const versions = await listVersions(ctx, flow.id)
+  const state = await publishingState(ctx, flow.id)
 
   return (
     <section>
@@ -59,6 +63,16 @@ export default async function FlowPage({
           ))}
         </ol>
       )}
+
+      <Versions
+        appId={app.id}
+        flowId={flow.id}
+        versions={versions}
+        state={state}
+        isDraft={flow.status === 'draft'}
+        canPublish={can(user.role, 'flow:publish')}
+        hasSteps={stepCount(flow.steps) > 0}
+      />
     </section>
   )
 }
