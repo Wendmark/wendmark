@@ -3,9 +3,16 @@ import type { FlowStatus } from '../../generated/prisma/client'
 import { getDb } from '../db'
 import type { AuthorSession } from '../auth/author-tokens'
 import type { Context } from '../apps/service'
-import { NotFoundError } from '../apps/service'
+import { InvalidInputError, NotFoundError } from '../apps/service'
 import { require as requirePermission } from '../permissions'
 import { canPause, canResume, copyName, stepCount } from './list'
+import {
+  hasUnpublishedChanges,
+  nextVersion,
+  publishState,
+  type PublishState,
+  type Snapshot,
+} from './versions'
 
 /**
  * Storing what author mode recorded.
@@ -53,6 +60,10 @@ export interface FlowSummary {
   steps: number
   updatedAt: Date
   recordedBy: string | null
+  /** How this flow stands relative to what users are being served. */
+  publishing: PublishState
+  /** Whether publishing now would change what users see. */
+  needsPublish: boolean
 }
 
 /**
@@ -68,18 +79,31 @@ export async function listFlows(ctx: Context, appId: string): Promise<FlowSummar
   const rows = await getDb().flow.findMany({
     where: { appId, deletedAt: null, app: { organizationId: ctx.organizationId } },
     orderBy: { updatedAt: 'desc' },
-    include: { createdBy: { select: { name: true, email: true } } },
+    include: {
+      createdBy: { select: { name: true, email: true } },
+      // Only the newest version matters here: it is what users are served.
+      versions: { orderBy: { version: 'desc' }, take: 1 },
+    },
   })
 
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    status: row.status,
-    steps: stepCount(row.steps),
-    updatedAt: row.updatedAt,
-    recordedBy: row.createdBy?.name ?? row.createdBy?.email ?? null,
-  }))
+  return rows.map((row) => {
+    const latest = row.versions[0] ?? null
+    const changed = hasUnpublishedChanges(snapshotOf(row), latest ? snapshotOf(latest) : null)
+    const publishing = publishState(latest !== null, changed)
+
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      status: row.status,
+      steps: stepCount(row.steps),
+      updatedAt: row.updatedAt,
+      recordedBy: row.createdBy?.name ?? row.createdBy?.email ?? null,
+      publishing,
+      // A paused flow is hidden on purpose; publishing is not the fix.
+      needsPublish: changed && row.status !== 'paused',
+    }
+  })
 }
 
 /** One process with its steps, or null if it is not this organization's. */
@@ -167,4 +191,157 @@ export async function deleteFlow(ctx: Context, flowId: string): Promise<{ appId:
 
   await getDb().flow.update({ where: { id: flow.id }, data: { deletedAt: new Date() } })
   return { appId: flow.appId }
+}
+
+/** The flow as it stands, in the shape a published version freezes. */
+function snapshotOf(flow: {
+  name: string
+  description: string | null
+  steps: unknown
+  schemaVersion: number
+  urlPatterns: string[]
+}): Snapshot {
+  return {
+    name: flow.name,
+    description: flow.description,
+    steps: flow.steps,
+    schemaVersion: flow.schemaVersion,
+    urlPatterns: flow.urlPatterns,
+  }
+}
+
+/**
+ * Freezes the flow as it stands and shows it to users.
+ *
+ * The version is a copy, not a pointer: from here on the author edits the
+ * row and users keep seeing the copy, until this is called again. That is
+ * what stops an edit reaching somebody halfway through a process.
+ */
+export async function publishFlow(ctx: Context, flowId: string): Promise<{ version: number }> {
+  requirePermission(ctx.role, 'flow:publish')
+  const flow = await own(ctx, flowId)
+
+  if (stepCount(flow.steps) === 0) {
+    throw new InvalidInputError('A process needs at least one step before it can be published.')
+  }
+
+  const versions = await getDb().flowVersion.findMany({
+    where: { flowId: flow.id },
+    select: { version: true },
+  })
+  const version = nextVersion(versions)
+
+  await getDb().flowVersion.create({
+    data: {
+      flowId: flow.id,
+      version,
+      name: flow.name,
+      ...(flow.description === null ? {} : { description: flow.description }),
+      steps: flow.steps === null ? [] : flow.steps,
+      schemaVersion: flow.schemaVersion,
+      urlPatterns: flow.urlPatterns,
+      publishedById: ctx.userId,
+    },
+  })
+
+  await getDb().flow.update({ where: { id: flow.id }, data: { status: 'published' } })
+  return { version }
+}
+
+/**
+ * Takes a process back to a draft.
+ *
+ * Published versions are left alone: they are the record of what users were
+ * shown, and deleting them would make the history a lie. Nothing serves them
+ * once the flow is a draft again.
+ */
+export async function unpublishFlow(ctx: Context, flowId: string): Promise<void> {
+  requirePermission(ctx.role, 'flow:publish')
+  const flow = await own(ctx, flowId)
+  if (flow.status === 'draft') return
+
+  await getDb().flow.update({ where: { id: flow.id }, data: { status: 'draft' } })
+}
+
+/**
+ * Puts an earlier version back in front of users.
+ *
+ * It copies that version's content onto the flow and publishes it as a new
+ * version, rather than moving a pointer backwards. The history stays a list
+ * of what was shown and when, which is the point of keeping it.
+ */
+export async function restoreVersion(
+  ctx: Context,
+  flowId: string,
+  versionId: string,
+): Promise<{ version: number }> {
+  requirePermission(ctx.role, 'flow:publish')
+  const flow = await own(ctx, flowId)
+
+  const old = await getDb().flowVersion.findFirst({ where: { id: versionId, flowId: flow.id } })
+  if (!old) throw new NotFoundError()
+
+  await getDb().flow.update({
+    where: { id: flow.id },
+    data: {
+      name: old.name,
+      description: old.description,
+      steps: old.steps === null ? [] : old.steps,
+      schemaVersion: old.schemaVersion,
+      urlPatterns: old.urlPatterns,
+    },
+  })
+
+  return publishFlow(ctx, flow.id)
+}
+
+export interface VersionSummary {
+  id: string
+  version: number
+  name: string
+  steps: number
+  publishedAt: Date
+  publishedBy: string | null
+  isLive: boolean
+}
+
+/** What has been published for this flow, newest first. */
+export async function listVersions(ctx: Context, flowId: string): Promise<VersionSummary[]> {
+  requirePermission(ctx.role, 'flow:read')
+  const flow = await getFlow(ctx, flowId)
+  if (!flow) return []
+
+  const rows = await getDb().flowVersion.findMany({
+    where: { flowId: flow.id },
+    orderBy: { version: 'desc' },
+    include: { publishedBy: { select: { name: true, email: true } } },
+  })
+
+  const live = flow.status !== 'draft'
+  return rows.map((row, index) => ({
+    id: row.id,
+    version: row.version,
+    name: row.name,
+    steps: stepCount(row.steps),
+    publishedAt: row.publishedAt,
+    publishedBy: row.publishedBy?.name ?? row.publishedBy?.email ?? null,
+    // The newest version is what users are served, and only while the flow
+    // is not back to a draft.
+    isLive: live && index === 0,
+  }))
+}
+
+/** Whether the draft says something users are not being shown yet. */
+export async function publishingState(ctx: Context, flowId: string): Promise<PublishState> {
+  requirePermission(ctx.role, 'flow:read')
+  const flow = await getFlow(ctx, flowId)
+  if (!flow) return 'never-published'
+
+  const latest = await getDb().flowVersion.findFirst({
+    where: { flowId: flow.id },
+    orderBy: { version: 'desc' },
+  })
+
+  const changed = hasUnpublishedChanges(snapshotOf(flow), latest ? snapshotOf(latest) : null)
+  return publishState(latest !== null, changed)
 }

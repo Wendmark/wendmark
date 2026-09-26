@@ -50,6 +50,7 @@ model User {
   memberships    Membership[]
   accounts       Account[]
   flows          Flow[]          @relation("FlowAuthor")
+  published      FlowVersion[]   @relation("FlowPublisher")
   authorTokens   AuthorToken[]
   authorSessions AuthorSession[]
 
@@ -278,7 +279,8 @@ model FlowVersion {
   publishedAt   DateTime @default(now())
   publishedById String?  @db.Uuid
 
-  flow Flow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  flow        Flow  @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  publishedBy User? @relation("FlowPublisher", fields: [publishedById], references: [id], onDelete: SetNull)
 
   @@unique([flowId, version])
   @@map("flow_version")
