@@ -18,11 +18,14 @@ packages/
 apps/
   portal/      @wendmark/portal      Next.js (App Router) portal. Depends on core only.
   playground/  @wendmark/playground  "Fika" coffee-subscription demo app to test guidance against.
-docs/          Design notes (see docs/legacy-notes.md)
+docs/          How it is built (docs/architecture), decisions, design notes
 legacy/        Old Chrome extension prototype, reference only, to be deleted
 ```
 
 The dependency rules between these are enforced by ESLint. See [CLAUDE.md](CLAUDE.md).
+
+For how each part works and why, start with
+[docs/architecture](docs/architecture/README.md).
 
 ## Setup
 
