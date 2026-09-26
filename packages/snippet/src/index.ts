@@ -9,7 +9,7 @@
 import type { Flow } from '@wendmark/core'
 // Imported from its own entry point: pulling it from the package root would
 // bundle zod (about 95 KB gzipped) into the snippet.
-import { looksLikeFlow } from '@wendmark/core/guard'
+import { checkFlow, looksLikeFlow } from '@wendmark/core/guard'
 import { startFlow, type Player } from './player/player'
 import { clearProgress, loadProgress } from './player/progress'
 import { startAuthorModeIfAsked } from './author/start'
@@ -63,7 +63,16 @@ export function stopRecording(): Flow | null {
 
 /** Starts guiding the user through a flow. Replaces any flow already running. */
 export function start(flow: Flow, options: { onEnd?: () => void } = {}): Player {
-  if (!looksLikeFlow(flow)) {
+  const verdict = checkFlow(flow)
+  if (verdict === 'too-new') {
+    // Worth its own message: nothing is wrong with the flow, this copy of
+    // the snippet is simply older than the flow it was given. A reload
+    // fetches a newer one.
+    throw new Error(
+      'Wendmark: this process was made with a newer version of Wendmark than the one on this page.',
+    )
+  }
+  if (verdict !== 'ok') {
     throw new Error('Wendmark: this flow does not have the shape of a playable flow.')
   }
 
