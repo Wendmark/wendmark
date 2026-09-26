@@ -56,6 +56,16 @@ describe('the snippet API', () => {
     expect(document.querySelector(OVERLAY_TAG)).toBeNull()
   })
 
+  it('says so when a process was made with a newer Wendmark', () => {
+    renderPage()
+    const newer = { ...flow, schemaVersion: 99 } as unknown as Flow
+
+    // Not the same as a broken flow: nothing is wrong with it, this copy of
+    // the snippet is simply out of date.
+    expect(() => start(newer)).toThrow(/newer version/i)
+    expect(document.querySelector(OVERLAY_TAG)).toBeNull()
+  })
+
   it('does nothing when stopping twice', () => {
     renderPage()
     start(flow)
