@@ -102,12 +102,25 @@ describe('surviving a page load', () => {
     expect(document.querySelector(OVERLAY_TAG)).toBeNull()
   })
 
-  it('does nothing when the app no longer has that flow', () => {
+  it('does nothing when it was not given that flow, and forgets nothing', () => {
     renderPage()
     start(flow)
     stop({ keepProgress: true })
 
+    // The caller not holding this flow is not evidence that it is gone: the
+    // portal serves flows the app has never seen. Clearing here would take
+    // someone's place away from the part of the snippet that can restore it.
     expect(resume([{ ...flow, id: 'a-different-flow' }])).toBeNull()
+    expect(loadProgress(sessionStorage)).not.toBeNull()
+  })
+
+  it('forgets progress when the flow it was given has changed shape', () => {
+    renderPage()
+    start(flow)
+    stop({ keepProgress: true })
+
+    const shortened = { ...flow, steps: [] } as unknown as Flow
+    expect(resume([shortened])).toBeNull()
     expect(loadProgress(sessionStorage)).toBeNull()
   })
 
