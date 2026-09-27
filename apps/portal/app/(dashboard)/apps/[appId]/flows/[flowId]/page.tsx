@@ -6,14 +6,17 @@ import { getFlow, listVersions, publishingState } from '../../../../../../lib/fl
 import { describeStatus, stepCount } from '../../../../../../lib/flows/list'
 import { can } from '../../../../../../lib/permissions'
 import { Versions } from './versions'
+import { RenameFlow } from './rename-flow'
+import { StepEditor, type EditableStep } from './step-editor'
 import { FlowSchema, type Step } from '@wendmark/core'
 
 /**
- * One process, as it was recorded.
+ * One process: what it says, in what order, and whether users can see it.
  *
- * Read only for now: changing what a step says is the editor, which comes
- * next. What this answers is "did the recording capture the right things?",
- * which is the first thing anyone asks after saving one.
+ * A recording is a rough draft — the wording comes from whatever the buttons
+ * were called, and a misclick is a step like any other. This is where that
+ * becomes something worth showing somebody. What each step points at is not
+ * editable here: that was captured in the running app.
  */
 export default async function FlowPage({
   params,
@@ -36,7 +39,13 @@ export default async function FlowPage({
   return (
     <section>
       <div className="row">
-        <h1>{flow.name}</h1>
+        <RenameFlow
+          appId={app.id}
+          flowId={flow.id}
+          name={flow.name}
+          description={flow.description}
+          canEdit={can(user.role, 'flow:update')}
+        />
         <Link href={`/apps/${app.id}`} className="button secondary">
           Back to {app.name}
         </Link>
@@ -54,14 +63,12 @@ export default async function FlowPage({
           newer snippet, or edited by hand.
         </p>
       ) : (
-        <ol className="steps">
-          {steps.map((step) => (
-            <li key={step.id}>
-              <strong>{step.text}</strong>
-              <p className="muted">{describeStep(step)}</p>
-            </li>
-          ))}
-        </ol>
+        <StepEditor
+          appId={app.id}
+          flowId={flow.id}
+          steps={steps.map(toEditable)}
+          canEdit={can(user.role, 'flow:update')}
+        />
       )}
 
       <Versions
@@ -83,6 +90,17 @@ function readSteps(steps: unknown): Step[] | null {
   return parsed.success ? parsed.data : null
 }
 
+/** A step in the shape the editor needs, with no schema types crossing over. */
+function toEditable(step: Step): EditableStep {
+  return {
+    id: step.id,
+    type: step.type,
+    text: step.text,
+    points: describeStep(step),
+    dynamic: step.type === 'action' && step.dynamic,
+  }
+}
+
 /** What the user has to do, and what they have to do it to. */
 function describeStep(step: Step): string {
   if (step.type === 'instruction') return 'Something to read — no click needed'
@@ -90,7 +108,6 @@ function describeStep(step: Step): string {
   const what = step.type === 'input' ? 'Types into' : 'Clicks'
   const target = step.target.name || step.target.text || step.target.selectors[0] || 'an element'
   const where = step.target.context ? ` in ${step.target.context}` : ''
-  const dynamic = step.type === 'action' && step.dynamic ? ' · their own data' : ''
 
-  return `${what} ${target}${where}${dynamic}`
+  return `${what} ${target}${where}`
 }
