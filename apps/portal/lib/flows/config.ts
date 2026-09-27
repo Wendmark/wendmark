@@ -110,3 +110,34 @@ export function configEtag(config: Config): string {
   const digest = createHash('sha256').update(JSON.stringify(config)).digest('hex')
   return `"${digest.slice(0, 32)}"`
 }
+
+/**
+ * The published steps of one process, ready to play.
+ *
+ * Read from the frozen version, never from the row: an author editing while
+ * someone is mid-process must not change what that person is being shown.
+ * Returns null for anything not currently published — a draft, a paused
+ * process, another app's, or one that never existed.
+ */
+export async function buildPlayableFlow(
+  appId: string,
+  flowId: string,
+  formatVersion: number,
+): Promise<unknown | null> {
+  const flow = await getDb().flow.findFirst({
+    where: { id: flowId, appId, deletedAt: null, status: 'published', visibility: 'listed' },
+    include: { versions: { orderBy: { version: 'desc' }, take: 1 } },
+  })
+
+  const published = flow?.versions[0]
+  if (!published) return null
+  if (!canPlay(published.schemaVersion, formatVersion)) return null
+
+  return {
+    schemaVersion: published.schemaVersion,
+    id: flow.id,
+    name: published.name,
+    ...(published.description === null ? {} : { description: published.description }),
+    steps: published.steps,
+  }
+}

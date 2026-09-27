@@ -13,10 +13,12 @@ import { checkFlow, looksLikeFlow } from '@wendmark/core/guard'
 import { startFlow, type Player } from './player/player'
 import { clearProgress, loadProgress } from './player/progress'
 import { startAuthorModeIfAsked } from './author/start'
-import { sendInstallPing } from './install/ping'
+import { appKey, portalOrigin, sendInstallPing } from './install/ping'
 import { startRecording, type Recording, type RecordingOptions } from './recorder/recorder'
+import { fetchConfig, fetchFlow, type FlowSummary } from './portal/client'
 
 export type { Flow }
+export type { FlowSummary } from './portal/client'
 export { createHighlighter, type Highlighter } from './overlay/highlighter'
 export { OVERLAY_TAG } from './overlay/overlay'
 export { prefersReducedMotion } from './overlay/cursor'
@@ -37,6 +39,11 @@ void startAuthorModeIfAsked(document, window, {
   stopFlow: stop,
   startRecording,
 })
+
+// Someone who was halfway through a process before this page loaded should
+// still be halfway through it. Costs a request only when there is progress
+// to pick up.
+void resumeFromPortal()
 
 /** Only one flow is guided at a time. */
 let current: Player | null = null
@@ -61,8 +68,51 @@ export function stopRecording(): Flow | null {
   return recording ? recording.stop() : null
 }
 
-/** Starts guiding the user through a flow. Replaces any flow already running. */
-export function start(flow: Flow, options: { onEnd?: () => void } = {}): Player {
+/**
+ * Starts guiding the user through a process.
+ *
+ * Given a flow, it starts at once. Given the id of a published process, it
+ * fetches the steps from the portal first and answers with a player, or with
+ * null when that process is not available — unpublished, or the portal could
+ * not be reached.
+ */
+export function start(flow: Flow, options?: { onEnd?: () => void }): Player
+export function start(flowId: string, options?: { onEnd?: () => void }): Promise<Player | null>
+export function start(
+  flow: Flow | string,
+  options: { onEnd?: () => void } = {},
+): Player | Promise<Player | null> {
+  if (typeof flow === 'string') return startById(flow, options)
+  return startNow(flow, options)
+}
+
+/** Fetches a published process, then guides it. */
+async function startById(flowId: string, options: { onEnd?: () => void }): Promise<Player | null> {
+  const portal = portalOrigin(document)
+  const key = appKey(document)
+  if (!portal || !key) return null
+
+  const fetched = await fetchFlow(portal, key, flowId, window)
+  if (!fetched || checkFlow(fetched) !== 'ok') return null
+
+  return startNow(fetched, options)
+}
+
+/**
+ * Every published process this app offers on this page.
+ *
+ * An empty list when the portal cannot be reached: an app asking what to
+ * offer should get an answer, not an exception.
+ */
+export async function listFlows(): Promise<FlowSummary[]> {
+  const portal = portalOrigin(document)
+  const key = appKey(document)
+  if (!portal || !key) return []
+
+  return (await fetchConfig(portal, key, window)).flows
+}
+
+function startNow(flow: Flow, options: { onEnd?: () => void } = {}): Player {
   const verdict = checkFlow(flow)
   if (verdict === 'too-new') {
     // Worth its own message: nothing is wrong with the flow, this copy of
@@ -103,9 +153,14 @@ export function resume(flows: Flow | Flow[]): Player | null {
   const available = Array.isArray(flows) ? flows : [flows]
   const flow = available.find((candidate) => candidate.id === progress.flowId)
 
-  // The flow is gone, or has been edited since: forget it rather than
-  // guessing which step the user meant.
-  if (!flow || !looksLikeFlow(flow) || progress.stepIndex >= flow.steps.length) {
+  // Not among the flows this caller happens to hold. That is not evidence
+  // the process is gone — it may be one the portal serves — so the progress
+  // is left alone for whoever does know about it.
+  if (!flow) return null
+
+  // Edited into a different shape since: forget it rather than guessing
+  // which step the user meant.
+  if (!looksLikeFlow(flow) || progress.stepIndex >= flow.steps.length) {
     clearProgress(storage)
     return null
   }
@@ -121,6 +176,34 @@ export function resume(flows: Flow | Flow[]): Player | null {
     },
   })
   return current
+}
+
+/**
+ * Picks up where the user left off, fetching the process from the portal.
+ *
+ * This is what makes guidance survive a page change without the app doing
+ * anything: the id and step number were remembered, and the steps come back
+ * from the portal. Silent about every failure — a person who was not
+ * mid-process must see nothing at all.
+ */
+export async function resumeFromPortal(): Promise<Player | null> {
+  const storage = safeSessionStorage()
+  const progress = loadProgress(storage)
+  if (!progress) return null
+
+  const portal = portalOrigin(document)
+  const key = appKey(document)
+  if (!portal || !key) return null
+
+  const flow = await fetchFlow(portal, key, progress.flowId, window)
+  // Unpublished since, or edited into a different shape: forget it rather
+  // than guessing which step the person meant.
+  if (!flow || checkFlow(flow) !== 'ok' || progress.stepIndex >= flow.steps.length) {
+    clearProgress(storage)
+    return null
+  }
+
+  return resume(flow)
 }
 
 /** Stops the flow being guided, if any. Keeps progress only when asked. */
