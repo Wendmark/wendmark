@@ -61,6 +61,12 @@ const CURSOR_CSS = `
 /** Keep the cursor at least this far inside the window. */
 const VIEWPORT_MARGIN = 8
 
+/**
+ * How long a glide lasts, matching the transition in CURSOR_CSS. Kept as a
+ * number too, because the cursor has to know when it has arrived.
+ */
+const GLIDE_MS = 650
+
 /** Just enough of a rect for the maths, so tests need no real layout. */
 export interface Box {
   left: number
@@ -87,6 +93,13 @@ export function cursorPoint(
 export interface Cursor {
   moveTo: (x: number, y: number) => void
   pointAt: (element: Element, view: Window, options?: { glide?: boolean }) => void
+  /**
+   * Stay with a target that is moving under the cursor — a page scrolling,
+   * a panel opening. Instant, so the cursor never lags behind the ring,
+   * unless it is still gliding towards that target, in which case the glide
+   * is allowed to finish at the new place.
+   */
+  follow: (element: Element, view: Window) => void
   setLabel: (text: string) => void
   hide: () => void
   destroy: () => void
@@ -141,21 +154,47 @@ export function createCursor(root: ShadowRoot, doc: Document): Cursor {
     cursor.style.display = 'block'
   }
 
+  /** True while a glide is still running, so it is not cut short. */
+  let glidingUntil = 0
+
+  function pointOf(element: Element, view: Window): { x: number; y: number } {
+    return cursorPoint(element.getBoundingClientRect(), {
+      width: view.innerWidth,
+      height: view.innerHeight,
+    })
+  }
+
   return {
     moveTo,
     pointAt: (element: Element, view: Window, options?: { glide?: boolean }) => {
-      const point = cursorPoint(element.getBoundingClientRect(), {
-        width: view.innerWidth,
-        height: view.innerHeight,
-      })
+      const point = pointOf(element, view)
       const glide = (options?.glide ?? true) && !prefersReducedMotion(view)
 
       if (glide && cursor.style.display === 'none') {
         // First appearance: come in from the bottom of the screen, so the
-        // user's eye follows the cursor to the target.
+        // user's eye follows the cursor to the target. It has to be shown
+        // before it is placed — a browser will not animate from a position
+        // an element held while it was display: none, and the cursor would
+        // simply appear at the target instead of travelling to it.
+        cursor.style.display = 'block'
         placeAt(view.innerWidth / 2, view.innerHeight - ENTRANCE_OFFSET)
       }
       cursor.classList.toggle('is-gliding', glide)
+      glidingUntil = glide ? Date.now() + GLIDE_MS : 0
+      moveTo(point.x, point.y, view.innerWidth)
+    },
+    follow: (element: Element, view: Window) => {
+      const point = pointOf(element, view)
+
+      // Mid-glide, the target moving is usually the page still scrolling it
+      // into view. Retargeting the transition keeps one smooth movement;
+      // placing the cursor outright would cut it off with a jump.
+      if (Date.now() < glidingUntil) {
+        moveTo(point.x, point.y, view.innerWidth)
+        return
+      }
+
+      placeAt(point.x, point.y)
       moveTo(point.x, point.y, view.innerWidth)
     },
     setLabel: (text: string) => {

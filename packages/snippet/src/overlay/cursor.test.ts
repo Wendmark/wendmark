@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createCursor, cursorPoint, prefersReducedMotion } from './cursor'
 import { createOverlay, type Overlay } from './overlay'
 import { setRect } from '../test-utils'
@@ -176,6 +176,80 @@ describe('how the cursor moves', () => {
 
     expect(cursorElement()?.classList.contains('is-gliding')).toBe(false)
     expect(cursorElement()?.style.top).toBe('60px')
+  })
+
+  it('lets a glide finish when the page scrolls the target under it', () => {
+    // The player scrolls a target into view and highlights it at the same
+    // moment, so the target keeps moving while the cursor is gliding to it.
+    // Cutting the glide short there is what made the cursor appear to jump.
+    const cursor = createCursor(overlay.root, document)
+    const target = button()
+    cursor.pointAt(target, window)
+
+    setRect(target, { left: 100, top: 40, width: 120, height: 40 })
+    cursor.follow(target, window)
+
+    expect(cursorElement()?.classList.contains('is-gliding')).toBe(true)
+    expect(cursorElement()?.style.top).toBe('60px')
+  })
+
+  it('moves outright when it is following a page it is not gliding to', () => {
+    vi.useFakeTimers()
+    try {
+      const cursor = createCursor(overlay.root, document)
+      const target = button()
+      cursor.pointAt(target, window)
+
+      // Long after the glide has finished: the user is scrolling, and the
+      // cursor has to stay pinned to the ring rather than trailing it.
+      vi.advanceTimersByTime(2_000)
+      setRect(target, { left: 100, top: 40, width: 120, height: 40 })
+      cursor.follow(target, window)
+
+      expect(cursorElement()?.classList.contains('is-gliding')).toBe(false)
+      expect(cursorElement()?.style.top).toBe('60px')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not animate a follow when the user asked for less motion', () => {
+    // A window that says the user wants less movement.
+    const still = {
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+      matchMedia: (query: string) => ({ matches: query.includes('reduce') }),
+    } as unknown as Window
+
+    const cursor = createCursor(overlay.root, document)
+    const target = button()
+    cursor.pointAt(target, still)
+
+    setRect(target, { left: 100, top: 40, width: 120, height: 40 })
+    cursor.follow(target, still)
+
+    expect(cursorElement()?.classList.contains('is-gliding')).toBe(false)
+  })
+
+  it('is on screen before it starts its entrance, or it cannot animate', () => {
+    // A browser will not transition from a position an element held while it
+    // was display: none. Placed first and shown second, the cursor appears
+    // at the target rather than travelling to it.
+    const cursor = createCursor(overlay.root, document)
+    const element = cursorElement() as HTMLElement
+    let displayWhenPlaced: string | null = null
+
+    const observer = new MutationObserver(() => {
+      if (displayWhenPlaced === null && element.style.top !== '') {
+        displayWhenPlaced = element.style.display
+      }
+    })
+    observer.observe(element, { attributes: true, attributeFilter: ['style'] })
+
+    cursor.pointAt(button(), window)
+    observer.disconnect()
+
+    expect(element.style.display).toBe('block')
   })
 
   it('enters from the bottom of the screen the first time', () => {
