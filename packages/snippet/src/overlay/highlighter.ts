@@ -54,10 +54,12 @@ export function createHighlighter(
       cursor.pointAt(element, view)
 
       tracker = trackElement(element, view, {
-        // Following a moving page: reposition both, without animating.
+        // Following a moving page: keep the ring and the cursor together.
+        // The cursor decides whether that means moving outright or letting
+        // a glide finish at the new place.
         onMove: () => {
           ring.update()
-          cursor.pointAt(element, view, { glide: false })
+          cursor.follow(element, view)
         },
         onLost: () => {
           clear()
