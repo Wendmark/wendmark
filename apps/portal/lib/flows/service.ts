@@ -1,4 +1,4 @@
-import type { Flow } from '@wendmark/core'
+import { FlowSchema, type Flow, type Step } from '@wendmark/core'
 import type { FlowStatus } from '../../generated/prisma/client'
 import { getDb } from '../db'
 import type { AuthorSession } from '../auth/author-tokens'
@@ -6,6 +6,7 @@ import type { Context } from '../apps/service'
 import { InvalidInputError, NotFoundError } from '../apps/service'
 import { require as requirePermission } from '../permissions'
 import { canPause, canResume, copyName, stepCount } from './list'
+import { addNote, moveStep, removeStep, retitleStep, setDynamic } from './edit'
 import {
   hasUnpublishedChanges,
   nextVersion,
@@ -344,4 +345,97 @@ export async function publishingState(ctx: Context, flowId: string): Promise<Pub
 
   const changed = hasUnpublishedChanges(snapshotOf(flow), latest ? snapshotOf(latest) : null)
   return publishState(latest !== null, changed)
+}
+
+/**
+ * Applies a change to a process's steps.
+ *
+ * The steps are read back through the schema first, so an edit can never
+ * turn a valid process into an invalid one by building on something the
+ * portal did not understand. It edits the draft, never a published version:
+ * what users see changes when somebody publishes, not when somebody types.
+ */
+async function editSteps(
+  ctx: Context,
+  flowId: string,
+  change: (steps: Step[]) => Step[],
+): Promise<void> {
+  requirePermission(ctx.role, 'flow:update')
+  const flow = await own(ctx, flowId)
+
+  const parsed = FlowSchema.shape.steps.safeParse(flow.steps)
+  if (!parsed.success) {
+    throw new InvalidInputError(
+      'These steps were not written in a format this portal understands, so they cannot be edited here.',
+    )
+  }
+
+  const next = change(parsed.data)
+  await getDb().flow.update({ where: { id: flow.id }, data: { steps: next } })
+}
+
+/** Rewrites what a step tells the user. */
+export async function retitleFlowStep(
+  ctx: Context,
+  flowId: string,
+  stepId: string,
+  text: string,
+): Promise<void> {
+  await editSteps(ctx, flowId, (steps) => retitleStep(steps, stepId, text))
+}
+
+/** Moves a step earlier or later in the process. */
+export async function moveFlowStep(
+  ctx: Context,
+  flowId: string,
+  stepId: string,
+  direction: -1 | 1,
+): Promise<void> {
+  await editSteps(ctx, flowId, (steps) => moveStep(steps, stepId, direction))
+}
+
+/** Drops a step: a misclick, or something the user should not be told. */
+export async function removeFlowStep(ctx: Context, flowId: string, stepId: string): Promise<void> {
+  await editSteps(ctx, flowId, (steps) => removeStep(steps, stepId))
+}
+
+/** Marks a step as pointing at the user's own data, or not. */
+export async function setFlowStepDynamic(
+  ctx: Context,
+  flowId: string,
+  stepId: string,
+  dynamic: boolean,
+): Promise<void> {
+  await editSteps(ctx, flowId, (steps) => setDynamic(steps, stepId, dynamic))
+}
+
+/** Adds something for the user to read, after a given step. */
+export async function addFlowNote(
+  ctx: Context,
+  flowId: string,
+  text: string,
+  afterId: string | null,
+): Promise<void> {
+  await editSteps(ctx, flowId, (steps) => addNote(steps, text, afterId))
+}
+
+/** Renames a process, and rewrites the sentence under its name. */
+export async function renameFlow(
+  ctx: Context,
+  flowId: string,
+  name: string,
+  description: string,
+): Promise<void> {
+  requirePermission(ctx.role, 'flow:update')
+  const flow = await own(ctx, flowId)
+
+  const trimmed = name.trim()
+  if (trimmed === '') throw new InvalidInputError('Give the process a name.')
+  if (trimmed.length > 200) throw new InvalidInputError('That name is too long.')
+
+  const summary = description.trim().slice(0, 2000)
+  await getDb().flow.update({
+    where: { id: flow.id },
+    data: { name: trimmed, description: summary === '' ? null : summary },
+  })
 }
