@@ -3,7 +3,16 @@ import { configEtag, readFormatVersion, type Config } from './config'
 
 function config(overrides: Partial<Config> = {}): Config {
   return {
-    flows: [{ id: 'f1', name: 'Order coffee', description: null, steps: 3, version: 2 }],
+    flows: [
+      {
+        id: 'f1',
+        name: 'Order coffee',
+        description: null,
+        steps: 3,
+        version: 2,
+        appliesHere: true,
+      },
+    ],
     launcher: { enabled: false },
     ...overrides,
   }
@@ -40,14 +49,32 @@ describe('configEtag', () => {
 
   it('changes when a published process is renamed', () => {
     const renamed = config({
-      flows: [{ id: 'f1', name: 'Order beans', description: null, steps: 3, version: 2 }],
+      flows: [
+        {
+          id: 'f1',
+          name: 'Order beans',
+          description: null,
+          steps: 3,
+          version: 2,
+          appliesHere: true,
+        },
+      ],
     })
     expect(configEtag(renamed)).not.toBe(configEtag(config()))
   })
 
   it('changes when a new version of the same process is published', () => {
     const republished = config({
-      flows: [{ id: 'f1', name: 'Order coffee', description: null, steps: 3, version: 3 }],
+      flows: [
+        {
+          id: 'f1',
+          name: 'Order coffee',
+          description: null,
+          steps: 3,
+          version: 3,
+          appliesHere: true,
+        },
+      ],
     })
     expect(configEtag(republished)).not.toBe(configEtag(config()))
   })

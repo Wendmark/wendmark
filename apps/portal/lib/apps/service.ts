@@ -4,6 +4,7 @@ import { require as requirePermission } from '../permissions'
 import { revokeAuthorSessions } from '../auth/author-tokens'
 import { generatePublicKey } from './keys'
 import { parseOrigins } from './origins'
+import { readAppSettings, writeAppSettings } from './settings'
 
 /**
  * Who is asking, and where they are acting.
@@ -137,6 +138,19 @@ export async function updateApp(
  * Issues a new key. The old one stops working at once, so any page still
  * serving the old script tag loses guidance until it is updated.
  */
+/** Turns the snippet's own launcher button on or off for this app. */
+export async function setLauncher(ctx: Context, appId: string, enabled: boolean): Promise<App> {
+  requirePermission(ctx.role, 'app:update')
+  const existing = await getApp(ctx, appId)
+  if (!existing) throw new NotFoundError()
+
+  const settings = readAppSettings(existing.settings)
+  return getDb().app.update({
+    where: { id: existing.id },
+    data: { settings: writeAppSettings({ ...settings, launcher: enabled }) },
+  })
+}
+
 export async function rotateKey(ctx: Context, appId: string): Promise<App> {
   requirePermission(ctx.role, 'app:rotate-key')
   const existing = await getApp(ctx, appId)
