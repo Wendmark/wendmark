@@ -16,6 +16,10 @@ import { startAuthorModeIfAsked } from './author/start'
 import { appKey, portalOrigin, sendInstallPing } from './install/ping'
 import { startRecording, type Recording, type RecordingOptions } from './recorder/recorder'
 import { fetchConfig, fetchFlow, type FlowSummary } from './portal/client'
+import { createOverlay } from './overlay/overlay'
+import { openLauncher as openLauncherPanel, type Launcher } from './launcher/launcher'
+import { createOpenerButton, type OpenerButton } from './launcher/button'
+import { loadCompleted, markCompleted } from './launcher/state'
 
 export type { Flow }
 export type { FlowSummary } from './portal/client'
@@ -44,6 +48,9 @@ void startAuthorModeIfAsked(document, window, {
 // still be halfway through it. Costs a request only when there is progress
 // to pick up.
 void resumeFromPortal()
+
+// Show the launcher button, if this app asked for one.
+void mountLauncherIfEnabled()
 
 /** Only one flow is guided at a time. */
 let current: Player | null = null
@@ -130,6 +137,7 @@ function startNow(flow: Flow, options: { onEnd?: () => void } = {}): Player {
   current = startFlow(flow, {
     onFinish: () => {
       current = null
+      markCompleted(safeLocalStorage(), flow.id)
       options.onEnd?.()
     },
     onStop: () => {
@@ -204,6 +212,75 @@ export async function resumeFromPortal(): Promise<Player | null> {
   }
 
   return resume(flow)
+}
+
+/** The launcher's own overlay, separate from the one guidance draws in. */
+let launcherOverlay: { root: ShadowRoot; destroy: () => void } | null = null
+let launcherPanel: Launcher | null = null
+let opener: OpenerButton | null = null
+
+/** The page's local storage, or undefined where the browser refuses it. */
+function safeLocalStorage(): Storage | undefined {
+  try {
+    return window.localStorage
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Opens the "How do I…" panel.
+ *
+ * Meant to be called from an app's own help menu. Nothing opens it by
+ * itself unless the app turned the button on in the portal.
+ */
+export async function openLauncher(): Promise<void> {
+  if (launcherPanel) return
+
+  const flows = await listFlows()
+  const progress = loadProgress(safeSessionStorage())
+
+  const overlay = launcherOverlay ?? createOverlay(document)
+  launcherOverlay = overlay
+  opener?.setHidden(true)
+
+  launcherPanel = openLauncherPanel(overlay.root, document, flows, {
+    unfinishedId: progress?.flowId ?? null,
+    completedIds: loadCompleted(safeLocalStorage()),
+    onChoose: (flowId) => {
+      launcherPanel = null
+      opener?.setHidden(false)
+      void start(flowId)
+    },
+  })
+}
+
+/** Closes the launcher, if it is open. */
+export function closeLauncher(): void {
+  launcherPanel?.close()
+  launcherPanel = null
+  opener?.setHidden(false)
+}
+
+/**
+ * Shows Wendmark's own launcher button, when the app asked for one.
+ *
+ * Off unless the portal says otherwise, so an app that never opts in never
+ * has anything added to its interface.
+ */
+async function mountLauncherIfEnabled(): Promise<void> {
+  const portal = portalOrigin(document)
+  const key = appKey(document)
+  if (!portal || !key) return
+
+  const config = await fetchConfig(portal, key, window)
+  if (!config.launcher.enabled) return
+
+  const overlay = launcherOverlay ?? createOverlay(document)
+  launcherOverlay = overlay
+  opener = createOpenerButton(overlay.root, document, () => {
+    void openLauncher()
+  })
 }
 
 /** Stops the flow being guided, if any. Keeps progress only when asked. */

@@ -4,6 +4,8 @@ import { requireUser } from '../../../../../lib/auth/session'
 import { can } from '../../../../../lib/permissions'
 import { AppSettingsForm } from './app-settings-form'
 import { DangerZone } from './danger-zone'
+import { LauncherSetting } from './launcher-setting'
+import { readAppSettings } from '../../../../../lib/apps/settings'
 
 export const metadata = { title: 'App settings' }
 
@@ -27,6 +29,12 @@ export default async function AppSettingsPage({ params }: { params: Promise<{ ap
         publicKey={app.publicKey}
         canEdit={can(user.role, 'app:update')}
         canRotate={can(user.role, 'app:rotate-key')}
+      />
+
+      <LauncherSetting
+        appId={app.id}
+        enabled={readAppSettings(app.settings).launcher}
+        canEdit={can(user.role, 'app:update')}
       />
 
       {can(user.role, 'app:delete') ? <DangerZone appId={app.id} name={app.name} /> : null}

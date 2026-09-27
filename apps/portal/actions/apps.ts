@@ -8,6 +8,7 @@ import {
   createApp,
   deleteApp,
   rotateKey,
+  setLauncher,
   updateApp,
   type Context,
 } from '../lib/apps/service'
@@ -104,4 +105,18 @@ export async function deleteAppAction(_previous: FormResult, form: FormData): Pr
   }
   revalidatePath('/')
   redirect('/')
+}
+
+export async function setLauncherAction(
+  _previous: FormResult,
+  form: FormData,
+): Promise<FormResult> {
+  const appId = String(form.get('appId') ?? '')
+  try {
+    await setLauncher(await context(), appId, form.get('enabled') === 'true')
+  } catch (error) {
+    return explain(error)
+  }
+  revalidatePath(`/apps/${appId}/settings`)
+  return {}
 }

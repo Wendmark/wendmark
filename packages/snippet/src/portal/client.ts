@@ -15,6 +15,8 @@ export interface FlowSummary {
   name: string
   description: string | null
   steps: number
+  /** Whether this process belongs on the page the snippet is on. */
+  appliesHere: boolean
 }
 
 export interface PortalConfig {
@@ -68,6 +70,9 @@ function readConfig(value: unknown): PortalConfig {
       name: candidate.name,
       description: typeof candidate.description === 'string' ? candidate.description : null,
       steps: typeof candidate.steps === 'number' ? candidate.steps : 0,
+      // An older portal does not say; assume it belongs here rather than
+      // hiding it in a section the user has to go looking in.
+      appliesHere: candidate.appliesHere !== false,
     })
   }
 

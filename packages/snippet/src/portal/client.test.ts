@@ -15,7 +15,9 @@ function answering(status: number, body: unknown): ReturnType<typeof vi.fn> {
 }
 
 const oneFlow = {
-  flows: [{ id: 'f1', name: 'Order coffee', description: 'How to order', steps: 3 }],
+  flows: [
+    { id: 'f1', name: 'Order coffee', description: 'How to order', steps: 3, appliesHere: true },
+  ],
   launcher: { enabled: false },
 }
 
@@ -48,7 +50,7 @@ describe('fetchConfig', () => {
     const config = await fetchConfig('https://portal.test', 'wm_key', window)
 
     expect(config.flows).toEqual([
-      { id: 'f1', name: 'Order coffee', description: 'How to order', steps: 3 },
+      { id: 'f1', name: 'Order coffee', description: 'How to order', steps: 3, appliesHere: true },
     ])
   })
 
