@@ -3,6 +3,7 @@ import { SCHEMA_VERSION } from '@wendmark/core'
 import { getDb } from '../db'
 import { stepCount } from './list'
 import { appliesTo } from './targeting'
+import { readAppSettings } from '../apps/settings'
 
 /**
  * What a snippet is told on page load.
@@ -15,14 +16,6 @@ import { appliesTo } from './targeting'
  * origins, and the response is the same for every visitor.
  */
 
-/**
- * The launcher is off until an app turns it on, and nothing can turn it on
- * yet — apps call `Wendmark.openLauncher()` from their own interface. The
- * field is here so the snippet reads it from day one rather than learning a
- * new shape later. Making it a setting is part of the launcher work.
- */
-const LAUNCHER_ENABLED = false
-
 export interface ConfigFlow {
   id: string
   name: string
@@ -30,6 +23,14 @@ export interface ConfigFlow {
   steps: number
   /** Which version of this flow the snippet would be given. */
   version: number
+  /**
+   * Whether this process belongs on the page the snippet asked from.
+   *
+   * Sent rather than filtered on, so the launcher can lead with what is
+   * useful here and still offer everything else. A process for another page
+   * is worth showing: the player says where to go.
+   */
+  appliesHere: boolean
 }
 
 export interface Config {
@@ -66,6 +67,9 @@ export function readFormatVersion(raw: string | null): number {
  * never the row the author is editing.
  */
 export async function buildConfig(appId: string, query: ConfigQuery): Promise<Config> {
+  const app = await getDb().app.findUnique({ where: { id: appId }, select: { settings: true } })
+  const settings = readAppSettings(app?.settings)
+
   const rows = await getDb().flow.findMany({
     where: {
       appId,
@@ -84,7 +88,6 @@ export async function buildConfig(appId: string, query: ConfigQuery): Promise<Co
     // edited by hand should be left out rather than served half-formed.
     if (!published) continue
     if (!canPlay(published.schemaVersion, query.formatVersion)) continue
-    if (!appliesTo(published.urlPatterns, query.url)) continue
 
     flows.push({
       id: row.id,
@@ -92,10 +95,11 @@ export async function buildConfig(appId: string, query: ConfigQuery): Promise<Co
       description: published.description,
       steps: stepCount(published.steps),
       version: published.version,
+      appliesHere: appliesTo(published.urlPatterns, query.url),
     })
   }
 
-  return { flows, launcher: { enabled: LAUNCHER_ENABLED } }
+  return { flows, launcher: { enabled: settings.launcher } }
 }
 
 /**
@@ -109,4 +113,35 @@ export async function buildConfig(appId: string, query: ConfigQuery): Promise<Co
 export function configEtag(config: Config): string {
   const digest = createHash('sha256').update(JSON.stringify(config)).digest('hex')
   return `"${digest.slice(0, 32)}"`
+}
+
+/**
+ * The published steps of one process, ready to play.
+ *
+ * Read from the frozen version, never from the row: an author editing while
+ * someone is mid-process must not change what that person is being shown.
+ * Returns null for anything not currently published — a draft, a paused
+ * process, another app's, or one that never existed.
+ */
+export async function buildPlayableFlow(
+  appId: string,
+  flowId: string,
+  formatVersion: number,
+): Promise<unknown | null> {
+  const flow = await getDb().flow.findFirst({
+    where: { id: flowId, appId, deletedAt: null, status: 'published', visibility: 'listed' },
+    include: { versions: { orderBy: { version: 'desc' }, take: 1 } },
+  })
+
+  const published = flow?.versions[0]
+  if (!published) return null
+  if (!canPlay(published.schemaVersion, formatVersion)) return null
+
+  return {
+    schemaVersion: published.schemaVersion,
+    id: flow.id,
+    name: published.name,
+    ...(published.description === null ? {} : { description: published.description }),
+    steps: published.steps,
+  }
 }

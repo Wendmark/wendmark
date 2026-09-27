@@ -9,6 +9,10 @@
 import type { Flow, Step } from './schemas'
 import { SCHEMA_VERSION } from './version'
 
+// Re-exported so the snippet can tell the portal which format it speaks
+// without importing the package root, which would bundle zod.
+export { SCHEMA_VERSION }
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }

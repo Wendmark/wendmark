@@ -17,7 +17,9 @@ export function App() {
   const pathname = usePathname()
   const [recording, setRecording] = useState(false)
 
-  // If the user reloaded mid-flow, pick guidance up where they left off.
+  // The snippet picks a process up where the user left off by itself, using
+  // the portal. This only covers the harness's own hand-written flow, which
+  // the portal knows nothing about.
   useEffect(() => {
     window.Wendmark?.resume([changeGrindFlow])
   }, [])
