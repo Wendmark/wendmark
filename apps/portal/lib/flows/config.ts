@@ -35,7 +35,7 @@ export interface ConfigFlow {
 
 export interface Config {
   flows: ConfigFlow[]
-  launcher: { enabled: boolean }
+  launcher: { enabled: boolean; label: string }
 }
 
 export interface ConfigQuery {
@@ -99,7 +99,7 @@ export async function buildConfig(appId: string, query: ConfigQuery): Promise<Co
     })
   }
 
-  return { flows, launcher: { enabled: settings.launcher } }
+  return { flows, launcher: { enabled: settings.launcher, label: settings.launcherLabel } }
 }
 
 /**

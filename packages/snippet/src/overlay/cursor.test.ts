@@ -252,19 +252,59 @@ describe('how the cursor moves', () => {
     expect(element.style.display).toBe('block')
   })
 
+  /**
+   * Where the cursor was when its glide began.
+   *
+   * placeAt forces a reflow by reading offsetWidth, which is the one moment
+   * the element is sitting at its starting point. A MutationObserver is too
+   * late — it delivers after the test body has finished.
+   */
+  function startOfGlide(element: HTMLElement, move: () => void): string | null {
+    let start: string | null = null
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth')
+
+    Object.defineProperty(element, 'offsetWidth', {
+      configurable: true,
+      get: () => {
+        start ??= `${element.style.left},${element.style.top}`
+        return 0
+      },
+    })
+    move()
+    delete (element as unknown as Record<string, unknown>)['offsetWidth']
+    if (original) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', original)
+
+    return start
+  }
+
   it('enters from the bottom of the screen the first time', () => {
     const cursor = createCursor(overlay.root, document)
-    let seenFromBottom = false
     const element = cursorElement() as HTMLElement
-    // Watch the position the entrance starts from.
-    const observer = new MutationObserver(() => {
-      if (element.style.top === `${window.innerHeight - 60}px`) seenFromBottom = true
-    })
-    observer.observe(element, { attributes: true, attributeFilter: ['style'] })
 
-    cursor.pointAt(button(), window)
-    observer.disconnect()
-    expect(seenFromBottom || element.style.top === '220px').toBe(true)
+    const start = startOfGlide(element, () => {
+      cursor.pointAt(button(), window)
+    })
+
+    expect(start).toBe(`${window.innerWidth / 2}px,${window.innerHeight - 60}px`)
+    expect(element.style.top).toBe('220px')
+  })
+
+  it('comes back from where it last pointed, not from off-screen', () => {
+    // The player hides the cursor between steps while it looks for the next
+    // target. Reappearing from the bottom each time makes every step look
+    // like the first; it should travel from the thing the user just did.
+    const cursor = createCursor(overlay.root, document)
+    const element = cursorElement() as HTMLElement
+
+    cursor.pointAt(button({ left: 600, top: 100, width: 80, height: 30 }), window)
+    const wasAt = `${element.style.left},${element.style.top}`
+    cursor.hide()
+
+    const start = startOfGlide(element, () => {
+      cursor.pointAt(button({ left: 40, top: 500, width: 80, height: 30 }), window)
+    })
+
+    expect(start).toBe(wasAt)
   })
 })
 
