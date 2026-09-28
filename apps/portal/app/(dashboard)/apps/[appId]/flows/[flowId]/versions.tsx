@@ -49,7 +49,13 @@ export function Versions({
     <section className="versions">
       <h2>Publishing</h2>
 
-      <p className={state === 'up-to-date' && !isDraft ? 'seen' : 'muted'}>
+      <p
+        className={
+          state === 'up-to-date' && !isDraft
+            ? 'seen'
+            : `muted${state === 'edited-since' ? ' pending' : ''}`
+        }
+      >
         {isDraft && versions.length > 0
           ? 'Back to a draft — users see nothing. Publishing shows it again.'
           : describePublishState(state)}

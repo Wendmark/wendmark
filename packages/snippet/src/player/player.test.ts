@@ -45,6 +45,11 @@ const flow: Flow = {
 
 function panelText(part: string): string {
   const root = document.querySelector(OVERLAY_TAG)?.shadowRoot
+  // The panel lists the whole process now; the step in hand is the one
+  // marked current, and it carries its own number as a marker.
+  if (part === 'step-text') {
+    return root?.querySelector('[aria-current="step"]')?.lastElementChild?.textContent ?? ''
+  }
   return root?.querySelector(`[data-wendmark="${part}"]`)?.textContent ?? ''
 }
 
