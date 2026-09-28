@@ -61,7 +61,7 @@ describe('fetchConfig', () => {
     )
     expect(await fetchConfig('https://portal.test', 'wm_key', window)).toEqual({
       flows: [],
-      launcher: { enabled: false },
+      launcher: { enabled: false, label: 'How do I…' },
     })
   })
 
@@ -89,6 +89,22 @@ describe('fetchConfig', () => {
     answering(200, { flows: [], launcher: { enabled: 'yes' } })
     const config = await fetchConfig('https://portal.test', 'wm_key', window)
     expect(config.launcher.enabled).toBe(false)
+  })
+
+  it('calls the launcher whatever the app named it', async () => {
+    answering(200, { flows: [], launcher: { enabled: true, label: 'Guides' } })
+    expect((await fetchConfig('https://portal.test', 'wm_key', window)).launcher.label).toBe(
+      'Guides',
+    )
+  })
+
+  it('falls back to our own wording when the portal names nothing', async () => {
+    for (const launcher of [{ enabled: true }, { enabled: true, label: '  ' }, {}]) {
+      answering(200, { flows: [], launcher })
+      expect((await fetchConfig('https://portal.test', 'wm_key', window)).launcher.label).toBe(
+        'How do I…',
+      )
+    }
   })
 })
 

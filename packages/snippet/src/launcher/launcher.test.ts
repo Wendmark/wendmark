@@ -12,6 +12,7 @@ let overlay: Overlay | null = null
 function open(flows: FlowSummary[], options: Partial<Parameters<typeof openLauncher>[3]> = {}) {
   overlay = createOverlay(document)
   const launcher = openLauncher(overlay.root, document, flows, {
+    label: 'How do I…',
     unfinishedId: null,
     completedIds: [],
     onChoose: () => {},
@@ -45,6 +46,13 @@ describe('the launcher', () => {
 
     expect(panel).not.toBeNull()
     expect(panel?.getAttribute('aria-label')).toBe('How do I…')
+  })
+
+  it('calls itself whatever the app called it', () => {
+    const { root } = open([flow('a', 'Order coffee')], { label: 'Guides' })
+
+    expect(root.querySelector('h2')?.textContent).toBe('Guides')
+    expect(root.querySelector('[role="dialog"]')?.getAttribute('aria-label')).toBe('Guides')
   })
 
   it('separates this page from the rest of the app', () => {

@@ -15,7 +15,7 @@ import { clearProgress, loadProgress } from './player/progress'
 import { startAuthorModeIfAsked } from './author/start'
 import { appKey, portalOrigin, sendInstallPing } from './install/ping'
 import { startRecording, type Recording, type RecordingOptions } from './recorder/recorder'
-import { fetchConfig, fetchFlow, type FlowSummary } from './portal/client'
+import { DEFAULT_LAUNCHER_LABEL, fetchConfig, fetchFlow, type FlowSummary } from './portal/client'
 import { createOverlay } from './overlay/overlay'
 import { openLauncher as openLauncherPanel, type Launcher } from './launcher/launcher'
 import { createOpenerButton, type OpenerButton } from './launcher/button'
@@ -214,6 +214,9 @@ export async function resumeFromPortal(): Promise<Player | null> {
   return resume(flow)
 }
 
+/** What this app calls its guidance, once the config has been read. */
+let launcherState = { enabled: false, label: DEFAULT_LAUNCHER_LABEL }
+
 /** The launcher's own overlay, separate from the one guidance draws in. */
 let launcherOverlay: { root: ShadowRoot; destroy: () => void } | null = null
 let launcherPanel: Launcher | null = null
@@ -237,7 +240,12 @@ function safeLocalStorage(): Storage | undefined {
 export async function openLauncher(): Promise<void> {
   if (launcherPanel) return
 
-  const flows = await listFlows()
+  const portal = portalOrigin(document)
+  const key = appKey(document)
+  const config =
+    portal && key ? await fetchConfig(portal, key, window) : { flows: [], launcher: launcherState }
+
+  const flows = config.flows
   const progress = loadProgress(safeSessionStorage())
 
   const overlay = launcherOverlay ?? createOverlay(document)
@@ -245,6 +253,7 @@ export async function openLauncher(): Promise<void> {
   opener?.setHidden(true)
 
   launcherPanel = openLauncherPanel(overlay.root, document, flows, {
+    label: config.launcher.label,
     unfinishedId: progress?.flowId ?? null,
     completedIds: loadCompleted(safeLocalStorage()),
     onChoose: (flowId) => {
@@ -274,11 +283,12 @@ async function mountLauncherIfEnabled(): Promise<void> {
   if (!portal || !key) return
 
   const config = await fetchConfig(portal, key, window)
+  launcherState = config.launcher
   if (!config.launcher.enabled) return
 
   const overlay = launcherOverlay ?? createOverlay(document)
   launcherOverlay = overlay
-  opener = createOpenerButton(overlay.root, document, () => {
+  opener = createOpenerButton(overlay.root, document, config.launcher.label, () => {
     void openLauncher()
   })
 }

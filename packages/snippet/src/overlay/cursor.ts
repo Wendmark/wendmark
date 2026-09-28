@@ -16,7 +16,7 @@ const CURSOR_SVG = `
   <path
     d="M6 2.5v21l5.4-4.9 3.2 7.1 3.9-1.8-3.2-6.9 7.4-.3z"
     fill="#ffffff"
-    stroke="#5a48e8"
+    stroke="#12857d"
     stroke-width="1.8"
     stroke-linejoin="round"
   />
@@ -46,10 +46,10 @@ const CURSOR_CSS = `
     white-space: nowrap;
     padding: 7px 13px;
     border-radius: 999px;
-    border: 1px solid rgba(90, 72, 232, 0.35);
+    border: 1px solid rgba(18, 133, 125, 0.4);
     background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 4px 14px rgba(90, 72, 232, 0.3);
-    color: #5a48e8;
+    box-shadow: 0 4px 14px rgba(14, 92, 87, 0.28);
+    color: #0e5c57;
     font: 600 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   [data-wendmark="cursor"].is-flipped [data-wendmark="chip"] {
@@ -157,6 +157,15 @@ export function createCursor(root: ShadowRoot, doc: Document): Cursor {
   /** True while a glide is still running, so it is not cut short. */
   let glidingUntil = 0
 
+  /**
+   * Where the cursor was last pointing.
+   *
+   * The player hides the cursor between steps while it looks for the next
+   * target, so this is what it comes back from: the place the user just
+   * acted on. Only the very first appearance has nowhere to come from.
+   */
+  let lastPoint: { x: number; y: number } | null = null
+
   function pointOf(element: Element, view: Window): { x: number; y: number } {
     return cursorPoint(element.getBoundingClientRect(), {
       width: view.innerWidth,
@@ -171,17 +180,22 @@ export function createCursor(root: ShadowRoot, doc: Document): Cursor {
       const glide = (options?.glide ?? true) && !prefersReducedMotion(view)
 
       if (glide && cursor.style.display === 'none') {
-        // First appearance: come in from the bottom of the screen, so the
-        // user's eye follows the cursor to the target. It has to be shown
-        // before it is placed — a browser will not animate from a position
-        // an element held while it was display: none, and the cursor would
-        // simply appear at the target instead of travelling to it.
+        // Carry on from where the user last acted, so the cursor travels
+        // between the two things they are doing rather than appearing from
+        // nowhere each time. Only a cursor that has never been seen comes
+        // in from off-screen.
+        const from = lastPoint ?? { x: view.innerWidth / 2, y: view.innerHeight - ENTRANCE_OFFSET }
+
+        // It has to be shown before it is placed: a browser will not animate
+        // from a position an element held while it was display: none, and
+        // the cursor would appear at the target instead of travelling to it.
         cursor.style.display = 'block'
-        placeAt(view.innerWidth / 2, view.innerHeight - ENTRANCE_OFFSET)
+        placeAt(from.x, from.y)
       }
       cursor.classList.toggle('is-gliding', glide)
       glidingUntil = glide ? Date.now() + GLIDE_MS : 0
       moveTo(point.x, point.y, view.innerWidth)
+      lastPoint = point
     },
     follow: (element: Element, view: Window) => {
       const point = pointOf(element, view)
@@ -189,6 +203,8 @@ export function createCursor(root: ShadowRoot, doc: Document): Cursor {
       // Mid-glide, the target moving is usually the page still scrolling it
       // into view. Retargeting the transition keeps one smooth movement;
       // placing the cursor outright would cut it off with a jump.
+      lastPoint = point
+
       if (Date.now() < glidingUntil) {
         moveTo(point.x, point.y, view.innerWidth)
         return

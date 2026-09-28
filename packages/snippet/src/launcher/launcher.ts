@@ -10,6 +10,22 @@ import { isEmpty, sectionFlows, type LauncherSections } from './state'
  */
 
 const CSS = `
+  /* It grows out of the corner the button sits in, so it reads as that
+     button opening rather than as something arriving from nowhere. */
+  @keyframes wendmark-sheet-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.96); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .sheet {
+    transform-origin: bottom right;
+    animation: wendmark-sheet-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sheet { animation: none; }
+  }
+
   .sheet {
     position: fixed;
     right: 16px;
@@ -27,7 +43,15 @@ const CSS = `
     padding: 14px 16px 16px;
   }
   header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  h2 { margin: 0; font-size: 15px; flex: 1; }
+  h2 {
+    margin: 0;
+    font-size: 15px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   h3 {
     margin: 14px 0 6px;
     font-size: 11px;
@@ -52,15 +76,17 @@ const CSS = `
     display: block;
   }
   .item:hover { background: #f7f7fb; }
-  .item:focus-visible, .close:focus-visible { outline: 2px solid #5a48e8; outline-offset: 2px; }
+  .item:focus-visible, .close:focus-visible { outline: 2px solid #0e5c57; outline-offset: 2px; }
   .item .meta { display: block; color: #6b6779; font-size: 12px; margin-top: 2px; }
-  .item.resume { border-color: #5a48e8; }
+  .item.resume { border-color: #0e5c57; }
   .close { padding: 4px 8px; color: #6b6779; font-size: 16px; line-height: 1; }
   .empty { margin: 10px 0 2px; color: #6b6779; }
   .done { color: #1e7a3c; }
 `
 
 export interface LauncherOptions {
+  /** What this app calls its guidance, as set in the portal. */
+  label: string
   /** What the user was partway through, if anything. */
   unfinishedId: string | null
   completedIds: readonly string[]
@@ -95,7 +121,7 @@ export function openLauncher(
   panel.className = 'sheet'
   panel.setAttribute('role', 'dialog')
   panel.setAttribute('aria-modal', 'false')
-  panel.setAttribute('aria-label', 'How do I…')
+  panel.setAttribute('aria-label', options.label)
 
   const sections = sectionFlows({
     flows,
@@ -104,7 +130,7 @@ export function openLauncher(
   })
   const returnFocus = doc.activeElement
 
-  panel.appendChild(header(doc, close))
+  panel.appendChild(header(doc, options.label, close))
   panel.appendChild(body(doc, sections, options, choose))
   root.appendChild(panel)
 
@@ -151,11 +177,12 @@ export function openLauncher(
   return { close }
 }
 
-function header(doc: Document, onClose: () => void): HTMLElement {
+function header(doc: Document, label: string, onClose: () => void): HTMLElement {
   const element = doc.createElement('header')
 
   const title = doc.createElement('h2')
-  title.textContent = 'How do I…'
+  title.textContent = label
+  title.title = label
 
   const close = doc.createElement('button')
   close.type = 'button'

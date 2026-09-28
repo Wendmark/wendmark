@@ -21,10 +21,16 @@ export interface FlowSummary {
 
 export interface PortalConfig {
   flows: FlowSummary[]
-  launcher: { enabled: boolean }
+  launcher: { enabled: boolean; label: string }
 }
 
-const EMPTY: PortalConfig = { flows: [], launcher: { enabled: false } }
+/** What the launcher is called when an app has not said otherwise. */
+export const DEFAULT_LAUNCHER_LABEL = 'How do I…'
+
+const EMPTY: PortalConfig = {
+  flows: [],
+  launcher: { enabled: false, label: DEFAULT_LAUNCHER_LABEL },
+}
 
 /** A page load should not wait longer than this for guidance to be offered. */
 const TIMEOUT_MS = 4_000
@@ -76,8 +82,16 @@ function readConfig(value: unknown): PortalConfig {
     })
   }
 
-  const launcher = isRecord(value.launcher) && value.launcher.enabled === true
-  return { flows, launcher: { enabled: launcher } }
+  const launcher = isRecord(value.launcher) ? value.launcher : {}
+  const label = typeof launcher.label === 'string' ? launcher.label.trim() : ''
+
+  return {
+    flows,
+    launcher: {
+      enabled: launcher.enabled === true,
+      label: label === '' ? DEFAULT_LAUNCHER_LABEL : label,
+    },
+  }
 }
 
 /**

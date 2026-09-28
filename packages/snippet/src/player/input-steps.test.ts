@@ -46,6 +46,12 @@ function root(): ShadowRoot {
 }
 
 function panelText(part: string): string {
+  // The panel lists the whole process now; the step in hand is the one
+  // marked current, and it carries its own number as a marker.
+  if (part === 'step-text') {
+    const current = root().querySelector('[aria-current="step"]')
+    return current?.lastElementChild?.textContent ?? ''
+  }
   return root().querySelector(`[data-wendmark="${part}"]`)?.textContent ?? ''
 }
 

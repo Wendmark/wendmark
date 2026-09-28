@@ -75,7 +75,7 @@ describe('a process inside a web component', () => {
     const root = document.querySelector(OVERLAY_TAG)?.shadowRoot
     const ring = root?.querySelector('[data-wendmark="ring"]') as HTMLElement
     expect(ring.style.display).toBe('block')
-    expect(root?.querySelector('[data-wendmark="step-text"]')?.textContent).toBe(
+    expect(root?.querySelector('[aria-current="step"]')?.lastElementChild?.textContent).toBe(
       'Click Save changes',
     )
 
