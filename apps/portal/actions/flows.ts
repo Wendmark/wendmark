@@ -8,6 +8,7 @@ import {
   addFlowNote,
   deleteFlow,
   duplicateFlow,
+  moveFlowInList,
   moveFlowStep,
   publishFlow,
   removeFlowStep,
@@ -16,6 +17,8 @@ import {
   retitleFlowStep,
   setFlowStepDynamic,
   setPaused,
+  setUrlPatterns,
+  setVisibility,
   unpublishFlow,
 } from '../lib/flows/service'
 
@@ -166,5 +169,39 @@ export async function editStepAction(_previous: FormResult, form: FormData): Pro
   }
 
   revalidatePath(`/apps/${appId}/flows/${flowId}`)
+  return {}
+}
+
+export async function setTargetingAction(
+  _previous: FormResult,
+  form: FormData,
+): Promise<FormResult> {
+  const appId = String(form.get('appId') ?? '')
+  const flowId = String(form.get('flowId') ?? '')
+  try {
+    const ctx = await context()
+    await setUrlPatterns(ctx, flowId, String(form.get('patterns') ?? '').split('\n'))
+    await setVisibility(ctx, flowId, form.get('listed') === 'on')
+  } catch (error) {
+    return explain(error)
+  }
+  revalidatePath(`/apps/${appId}`)
+  revalidatePath(`/apps/${appId}/flows/${flowId}`)
+  return {}
+}
+
+export async function moveFlowAction(_previous: FormResult, form: FormData): Promise<FormResult> {
+  const appId = String(form.get('appId') ?? '')
+  try {
+    await moveFlowInList(
+      await context(),
+      appId,
+      String(form.get('flowId') ?? ''),
+      form.get('direction') === 'up' ? -1 : 1,
+    )
+  } catch (error) {
+    return explain(error)
+  }
+  revalidatePath(`/apps/${appId}`)
   return {}
 }

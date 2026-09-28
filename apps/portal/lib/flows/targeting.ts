@@ -65,3 +65,58 @@ export function appliesTo(patterns: readonly string[], url: string | null): bool
 
   return patterns.some((pattern) => patternMatches(pattern, path))
 }
+
+/** At most this many rules per process: more is a sign of the wrong tool. */
+export const MAX_PATTERNS = 20
+
+export type PatternsResult = { ok: true; patterns: string[] } | { ok: false; reason: string }
+
+/**
+ * Checks and tidies the rules an author typed.
+ *
+ * Deliberately not regular expressions. A pattern from the portal is matched
+ * on every config request, and an expression that backtracks badly would be
+ * a way to make the server work very hard on someone else's behalf. Segment
+ * wildcards cover what people actually write, and cannot misbehave.
+ */
+export function parsePatterns(raws: readonly string[]): PatternsResult {
+  const patterns: string[] = []
+
+  for (const raw of raws) {
+    const trimmed = raw.trim()
+    if (trimmed === '') continue
+
+    if (trimmed.includes('://') || trimmed.startsWith('//')) {
+      return {
+        ok: false,
+        reason: `Give a path, not a full address: /orders rather than ${trimmed}.`,
+      }
+    }
+    if (!trimmed.startsWith('/')) {
+      return { ok: false, reason: `A rule starts with a slash: /${trimmed}` }
+    }
+    if (trimmed.includes('?') || trimmed.includes('#')) {
+      return { ok: false, reason: 'A rule is a path, with no query string and no hash.' }
+    }
+    if (trimmed.length > 200) {
+      return { ok: false, reason: 'That rule is too long.' }
+    }
+
+    // Anything that is not a plain segment or a wildcard is almost certainly
+    // someone reaching for a regular expression.
+    const bad = segments(trimmed).find((part) => /[*]/.test(part) && part !== '*' && part !== '**')
+    if (bad) {
+      return {
+        ok: false,
+        reason: `Use * for one part of a path and ** for the rest. "${bad}" is neither.`,
+      }
+    }
+
+    if (!patterns.includes(trimmed)) patterns.push(trimmed)
+  }
+
+  if (patterns.length > MAX_PATTERNS) {
+    return { ok: false, reason: `That is more than ${MAX_PATTERNS} rules.` }
+  }
+  return { ok: true, patterns }
+}
