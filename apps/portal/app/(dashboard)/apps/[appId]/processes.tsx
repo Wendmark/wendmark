@@ -5,6 +5,7 @@ import { useActionState, useState } from 'react'
 import {
   deleteFlowAction,
   duplicateFlowAction,
+  moveFlowAction,
   pauseFlowAction,
   publishFlowAction,
   type FormResult,
@@ -34,9 +35,15 @@ export function Processes({ appId, flows, canEdit, canPublish, canDelete }: Proc
   const [copyState, duplicate, copying] = useActionState(duplicateFlowAction, initial)
   const [deleteState, remove, removing] = useActionState(deleteFlowAction, initial)
   const [publishState, publish, publishing] = useActionState(publishFlowAction, initial)
+  const [moveState, move, moving] = useActionState(moveFlowAction, initial)
   const [confirming, setConfirming] = useState<string | null>(null)
 
-  const error = pauseState.error ?? copyState.error ?? deleteState.error ?? publishState.error
+  const error =
+    pauseState.error ??
+    copyState.error ??
+    deleteState.error ??
+    publishState.error ??
+    moveState.error
 
   if (flows.length === 0) {
     return (
@@ -51,18 +58,50 @@ export function Processes({ appId, flows, canEdit, canPublish, canDelete }: Proc
       {error ? <p role="alert">{error}</p> : null}
 
       <ul className="processes">
-        {flows.map((flow) => (
+        {flows.map((flow, index) => (
           <li key={flow.id} className={`process status-${flow.status}`}>
             <div className="process-main">
               <Link href={`/apps/${appId}/flows/${flow.id}`}>{flow.name}</Link>
               <p className="muted">
-                {flow.steps} {flow.steps === 1 ? 'step' : 'steps'} · {describeStatus(flow.status)} ·
-                edited {flow.updatedAt.toLocaleDateString()}
+                {flow.steps} {flow.steps === 1 ? 'step' : 'steps'} · {describeStatus(flow.status)}
+                {flow.listed ? '' : ' · not in the launcher'} · edited{' '}
+                {flow.updatedAt.toLocaleDateString()}
                 {flow.recordedBy ? ` · recorded by ${flow.recordedBy}` : ''}
               </p>
             </div>
 
             <div className="process-actions">
+              {canEdit && flows.length > 1 ? (
+                <>
+                  <form action={move}>
+                    <input type="hidden" name="appId" value={appId} />
+                    <input type="hidden" name="flowId" value={flow.id} />
+                    <input type="hidden" name="direction" value="up" />
+                    <button
+                      type="submit"
+                      className="secondary"
+                      disabled={moving || index === 0}
+                      title="Earlier in the launcher"
+                    >
+                      ↑
+                    </button>
+                  </form>
+                  <form action={move}>
+                    <input type="hidden" name="appId" value={appId} />
+                    <input type="hidden" name="flowId" value={flow.id} />
+                    <input type="hidden" name="direction" value="down" />
+                    <button
+                      type="submit"
+                      className="secondary"
+                      disabled={moving || index === flows.length - 1}
+                      title="Later in the launcher"
+                    >
+                      ↓
+                    </button>
+                  </form>
+                </>
+              ) : null}
+
               {canPublish && flow.needsPublish ? (
                 <form action={publish}>
                   <input type="hidden" name="appId" value={appId} />

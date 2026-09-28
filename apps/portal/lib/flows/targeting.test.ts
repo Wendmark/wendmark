@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appliesTo, pathOf, patternMatches } from './targeting'
+import { appliesTo, MAX_PATTERNS, parsePatterns, pathOf, patternMatches } from './targeting'
 
 describe('pathOf', () => {
   it('takes the path from a full address', () => {
@@ -82,5 +82,59 @@ describe('appliesTo', () => {
 
   it('applies when the address cannot be read', () => {
     expect(appliesTo(['/profile'], '')).toBe(true)
+  })
+})
+
+describe('parsePatterns', () => {
+  it('keeps the rules an author typed', () => {
+    const result = parsePatterns(['/orders', '/profile'])
+    expect(result).toEqual({ ok: true, patterns: ['/orders', '/profile'] })
+  })
+
+  it('accepts wildcards', () => {
+    expect(parsePatterns(['/orders/*', '/orders/**'])).toEqual({
+      ok: true,
+      patterns: ['/orders/*', '/orders/**'],
+    })
+  })
+
+  it('ignores blank lines and repeats', () => {
+    expect(parsePatterns(['/orders', '', '  ', '/orders'])).toEqual({
+      ok: true,
+      patterns: ['/orders'],
+    })
+  })
+
+  it('means everywhere when nothing was typed', () => {
+    expect(parsePatterns([])).toEqual({ ok: true, patterns: [] })
+    expect(parsePatterns(['  '])).toEqual({ ok: true, patterns: [] })
+  })
+
+  it('refuses a full address, and says what to write instead', () => {
+    const result = parsePatterns(['https://app.example.com/orders'])
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toContain('/orders')
+  })
+
+  it('refuses a path that does not start with a slash', () => {
+    expect(parsePatterns(['orders']).ok).toBe(false)
+  })
+
+  it('refuses a query string or a hash', () => {
+    expect(parsePatterns(['/orders?page=2']).ok).toBe(false)
+    expect(parsePatterns(['/orders#top']).ok).toBe(false)
+  })
+
+  it('refuses something reaching for a regular expression', () => {
+    // Patterns are matched on every config request, so an expression that
+    // backtracks badly would be a way to make the server work very hard.
+    expect(parsePatterns(['/orders/(a|b)+*']).ok).toBe(false)
+    expect(parsePatterns(['/order*']).ok).toBe(false)
+  })
+
+  it('refuses more rules than anyone means to write', () => {
+    const many = Array.from({ length: MAX_PATTERNS + 1 }, (_, index) => `/page${index}`)
+    expect(parsePatterns(many).ok).toBe(false)
   })
 })

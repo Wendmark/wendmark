@@ -7,6 +7,7 @@ import { InvalidInputError, NotFoundError } from '../apps/service'
 import { require as requirePermission } from '../permissions'
 import { canPause, canResume, copyName, stepCount } from './list'
 import { addNote, moveStep, removeStep, retitleStep, setDynamic } from './edit'
+import { parsePatterns } from './targeting'
 import {
   hasUnpublishedChanges,
   nextVersion,
@@ -65,6 +66,8 @@ export interface FlowSummary {
   publishing: PublishState
   /** Whether publishing now would change what users see. */
   needsPublish: boolean
+  /** Whether the launcher offers it, or only an app asking by id can. */
+  listed: boolean
 }
 
 /**
@@ -79,7 +82,9 @@ export async function listFlows(ctx: Context, appId: string): Promise<FlowSummar
 
   const rows = await getDb().flow.findMany({
     where: { appId, deletedAt: null, app: { organizationId: ctx.organizationId } },
-    orderBy: { updatedAt: 'desc' },
+    // The order an author arranged, and within that the newest change
+    // first, so a fresh recording is not buried at the bottom.
+    orderBy: [{ sortOrder: 'asc' }, { updatedAt: 'desc' }],
     include: {
       createdBy: { select: { name: true, email: true } },
       // Only the newest version matters here: it is what users are served.
@@ -103,6 +108,7 @@ export async function listFlows(ctx: Context, appId: string): Promise<FlowSummar
       publishing,
       // A paused flow is hidden on purpose; publishing is not the fix.
       needsPublish: changed && row.status !== 'paused',
+      listed: row.visibility === 'listed',
     }
   })
 }
@@ -438,4 +444,78 @@ export async function renameFlow(
     where: { id: flow.id },
     data: { name: trimmed, description: summary === '' ? null : summary },
   })
+}
+
+/**
+ * Where a process offers itself.
+ *
+ * No rules means everywhere, which is what a recording gets by default and
+ * what most processes want. Rules are paths, so the same process works on
+ * localhost, staging and production.
+ */
+export async function setUrlPatterns(ctx: Context, flowId: string, raws: string[]): Promise<void> {
+  requirePermission(ctx.role, 'flow:update')
+  const flow = await own(ctx, flowId)
+
+  const parsed = parsePatterns(raws)
+  if (!parsed.ok) throw new InvalidInputError(parsed.reason)
+
+  await getDb().flow.update({ where: { id: flow.id }, data: { urlPatterns: parsed.patterns } })
+}
+
+/**
+ * Whether a process is offered in the launcher.
+ *
+ * Hidden is not private: the process still plays when an app asks for it by
+ * id, which is the point — it is for processes an app links to from its own
+ * interface, at the moment they are relevant.
+ */
+export async function setVisibility(ctx: Context, flowId: string, listed: boolean): Promise<void> {
+  requirePermission(ctx.role, 'flow:update')
+  const flow = await own(ctx, flowId)
+
+  await getDb().flow.update({
+    where: { id: flow.id },
+    data: { visibility: listed ? 'listed' : 'hidden' },
+  })
+}
+
+/**
+ * Moves a process up or down the launcher's list.
+ *
+ * Positions are renumbered from the current order each time, because rows
+ * created before this existed all sit at zero and would otherwise never
+ * separate.
+ */
+export async function moveFlowInList(
+  ctx: Context,
+  appId: string,
+  flowId: string,
+  direction: -1 | 1,
+): Promise<void> {
+  requirePermission(ctx.role, 'flow:update')
+
+  // The same order listFlows shows, tie-breaker included. Rows start at
+  // sortOrder 0, so a different tie-breaker here would renumber an order
+  // nobody is looking at and scramble the list on the first move.
+  const flows = await getDb().flow.findMany({
+    where: { appId, deletedAt: null, app: { organizationId: ctx.organizationId ?? '' } },
+    orderBy: [{ sortOrder: 'asc' }, { updatedAt: 'desc' }],
+    select: { id: true },
+  })
+
+  const from = flows.findIndex((flow) => flow.id === flowId)
+  if (from === -1) throw new NotFoundError()
+
+  const to = from + direction
+  if (to < 0 || to >= flows.length) return
+
+  const order = flows.map((flow) => flow.id)
+  const [moving] = order.splice(from, 1)
+  if (!moving) return
+  order.splice(to, 0, moving)
+
+  await getDb().$transaction(
+    order.map((id, index) => getDb().flow.update({ where: { id }, data: { sortOrder: index } })),
+  )
 }

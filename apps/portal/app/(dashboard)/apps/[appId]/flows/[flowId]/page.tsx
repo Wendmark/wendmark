@@ -8,6 +8,7 @@ import { can } from '../../../../../../lib/permissions'
 import { Versions } from './versions'
 import { RenameFlow } from './rename-flow'
 import { StepEditor, type EditableStep } from './step-editor'
+import { Targeting } from './targeting'
 import { FlowSchema, type Step } from '@wendmark/core'
 
 /**
@@ -70,6 +71,14 @@ export default async function FlowPage({
           canEdit={can(user.role, 'flow:update')}
         />
       )}
+
+      <Targeting
+        appId={app.id}
+        flowId={flow.id}
+        patterns={flow.urlPatterns}
+        listed={flow.visibility === 'listed'}
+        canEdit={can(user.role, 'flow:update')}
+      />
 
       <Versions
         appId={app.id}
