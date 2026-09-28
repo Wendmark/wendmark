@@ -403,3 +403,14 @@ button.destructive {
 .add-note:hover {
   color: var(--accent);
 }
+
+.form label.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.form label.checkbox input {
+  width: auto;
+}

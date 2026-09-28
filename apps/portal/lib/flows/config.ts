@@ -129,7 +129,10 @@ export async function buildPlayableFlow(
   formatVersion: number,
 ): Promise<unknown | null> {
   const flow = await getDb().flow.findFirst({
-    where: { id: flowId, appId, deletedAt: null, status: 'published', visibility: 'listed' },
+    // Visibility is about the launcher's list, not about permission: a
+    // hidden process is one an app links to itself, and it has to play when
+    // asked for by id.
+    where: { id: flowId, appId, deletedAt: null, status: 'published' },
     include: { versions: { orderBy: { version: 'desc' }, take: 1 } },
   })
 
