@@ -150,7 +150,7 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
     panel.show({
       stepNumber: index + 1,
       total: flow.steps.length,
-      text: step.text,
+      steps: flow.steps.map((one) => one.text),
       // An instruction step has nothing to click on the page, and an input
       // step may be finished without leaving the field, so the panel carries
       // a way forward for both.

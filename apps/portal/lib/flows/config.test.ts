@@ -13,7 +13,7 @@ function config(overrides: Partial<Config> = {}): Config {
         appliesHere: true,
       },
     ],
-    launcher: { enabled: false },
+    launcher: { enabled: false, label: 'How do I…' },
     ...overrides,
   }
 }
@@ -43,7 +43,7 @@ describe('configEtag', () => {
   })
 
   it('changes when a process is published', () => {
-    const before = configEtag({ flows: [], launcher: { enabled: false } })
+    const before = configEtag({ flows: [], launcher: { enabled: false, label: 'How do I…' } })
     expect(configEtag(config())).not.toBe(before)
   })
 
@@ -77,6 +77,11 @@ describe('configEtag', () => {
       ],
     })
     expect(configEtag(republished)).not.toBe(configEtag(config()))
+  })
+
+  it('changes when an app renames its launcher', () => {
+    const renamed = config({ launcher: { enabled: true, label: 'Guides' } })
+    expect(configEtag(renamed)).not.toBe(configEtag(config()))
   })
 
   it('is quoted, as an entity tag must be', () => {

@@ -17,6 +17,12 @@ function part(name: string): HTMLElement | null {
 }
 
 function panelText(name: string): string {
+  // The panel lists the whole process now; the step in hand is the one
+  // marked current, and it carries its own number as a marker.
+  if (name === 'step-text') {
+    const root = document.querySelector(OVERLAY_TAG)?.shadowRoot
+    return root?.querySelector('[aria-current="step"]')?.lastElementChild?.textContent ?? ''
+  }
   return part(name)?.textContent ?? ''
 }
 

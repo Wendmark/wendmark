@@ -138,8 +138,12 @@ export async function updateApp(
  * Issues a new key. The old one stops working at once, so any page still
  * serving the old script tag loses guidance until it is updated.
  */
-/** Turns the snippet's own launcher button on or off for this app. */
-export async function setLauncher(ctx: Context, appId: string, enabled: boolean): Promise<App> {
+/** Turns the snippet's own launcher button on or off, and names it. */
+export async function setLauncher(
+  ctx: Context,
+  appId: string,
+  input: { enabled: boolean; label?: string },
+): Promise<App> {
   requirePermission(ctx.role, 'app:update')
   const existing = await getApp(ctx, appId)
   if (!existing) throw new NotFoundError()
@@ -147,7 +151,13 @@ export async function setLauncher(ctx: Context, appId: string, enabled: boolean)
   const settings = readAppSettings(existing.settings)
   return getDb().app.update({
     where: { id: existing.id },
-    data: { settings: writeAppSettings({ ...settings, launcher: enabled }) },
+    data: {
+      settings: writeAppSettings({
+        ...settings,
+        launcher: input.enabled,
+        launcherLabel: input.label ?? settings.launcherLabel,
+      }),
+    },
   })
 }
 

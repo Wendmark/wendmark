@@ -15,33 +15,56 @@ const initial: FormResult = {}
 export function LauncherSetting({
   appId,
   enabled,
+  label,
   canEdit,
 }: {
   appId: string
   enabled: boolean
+  label: string
   canEdit: boolean
 }) {
   const [state, action, pending] = useActionState(setLauncherAction, initial)
 
   return (
-    <form action={action} className="form">
-      <h2>The “How do I…” button</h2>
+    <div className="launcher-setting">
+      <h2>The guidance button</h2>
       <p className="muted">
         {enabled
-          ? 'Wendmark shows its own button in the corner of your app.'
+          ? `Wendmark shows a “${label}” button in the corner of your app.`
           : 'Wendmark adds nothing to your app’s interface. Call Wendmark.openLauncher() from your own help menu to open the list of processes.'}
       </p>
 
-      <input type="hidden" name="appId" value={appId} />
-      <input type="hidden" name="enabled" value={enabled ? 'false' : 'true'} />
+      <form action={action} className="form">
+        <input type="hidden" name="appId" value={appId} />
+        <input type="hidden" name="enabled" value={enabled ? 'true' : 'false'} />
 
-      {state.error ? <p role="alert">{state.error}</p> : null}
+        <label>
+          What to call it
+          <input name="label" defaultValue={label} maxLength={40} disabled={!canEdit} />
+        </label>
+        <p className="muted">
+          Your users read this, so it should sound like your product. Empty falls back to “How do
+          I…”.
+        </p>
+
+        {state.error ? <p role="alert">{state.error}</p> : null}
+
+        {canEdit ? (
+          <button type="submit" disabled={pending}>
+            {pending ? 'Saving…' : 'Save the name'}
+          </button>
+        ) : null}
+      </form>
 
       {canEdit ? (
-        <button type="submit" className="secondary" disabled={pending}>
-          {enabled ? 'Turn the button off' : 'Show the button'}
-        </button>
+        <form action={action}>
+          <input type="hidden" name="appId" value={appId} />
+          <input type="hidden" name="enabled" value={enabled ? 'false' : 'true'} />
+          <button type="submit" className="secondary" disabled={pending}>
+            {enabled ? 'Turn the button off' : 'Show the button'}
+          </button>
+        </form>
       ) : null}
-    </form>
+    </div>
   )
 }

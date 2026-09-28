@@ -180,7 +180,7 @@ const PANEL_CSS = `
   [data-wendmark="recorder"] .step-actions button[aria-pressed="true"] {
     background: rgba(90, 72, 232, 0.12);
     border-color: rgba(90, 72, 232, 0.4);
-    color: #5a48e8;
+    color: #0e5c57;
   }
   [data-wendmark="recorder"] .empty {
     padding: 16px 14px;
@@ -206,7 +206,7 @@ const PANEL_CSS = `
   [data-wendmark="recorder"] footer button.primary {
     margin-left: auto;
     border-color: transparent;
-    background: #5a48e8;
+    background: #0e5c57;
     color: #fff;
     font-weight: 600;
   }

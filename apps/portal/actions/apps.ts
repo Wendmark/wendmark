@@ -113,7 +113,10 @@ export async function setLauncherAction(
 ): Promise<FormResult> {
   const appId = String(form.get('appId') ?? '')
   try {
-    await setLauncher(await context(), appId, form.get('enabled') === 'true')
+    await setLauncher(await context(), appId, {
+      enabled: form.get('enabled') === 'true',
+      ...(form.has('label') ? { label: String(form.get('label') ?? '') } : {}),
+    })
   } catch (error) {
     return explain(error)
   }

@@ -18,6 +18,8 @@ export default async function AppSettingsPage({ params }: { params: Promise<{ ap
   )
   if (!app) notFound()
 
+  const settings = readAppSettings(app.settings)
+
   return (
     <section>
       <h1>{app.name} settings</h1>
@@ -33,7 +35,8 @@ export default async function AppSettingsPage({ params }: { params: Promise<{ ap
 
       <LauncherSetting
         appId={app.id}
-        enabled={readAppSettings(app.settings).launcher}
+        enabled={settings.launcher}
+        label={settings.launcherLabel}
         canEdit={can(user.role, 'app:update')}
       />
 

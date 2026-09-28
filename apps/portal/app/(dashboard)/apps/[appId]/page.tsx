@@ -18,6 +18,7 @@ export default async function AppPage({ params }: { params: Promise<{ appId: str
 
   const unknownOrigins = await listUnknownOrigins(ctx, app.id)
   const flows = await listFlows(ctx, app.id)
+  const snippetTag = `<script src="http://localhost:3100/snippet.js" data-app="${app.publicKey}"></script>`
 
   return (
     <section>
@@ -28,15 +29,27 @@ export default async function AppPage({ params }: { params: Promise<{ appId: str
         </Link>
       </div>
 
-      <h2>Install</h2>
-      <p className="muted">Paste this into the app, just before the closing body tag.</p>
-      <pre className="code">{`<script src="http://localhost:3100/snippet.js" data-app="${app.publicKey}"></script>`}</pre>
-
-      <p className={app.lastSeenAt ? 'seen' : 'muted'}>
-        {app.lastSeenAt
-          ? `✓ Snippet seen on ${app.lastSeenOrigin ?? 'an unknown address'}, ${app.lastSeenAt.toLocaleString()}.`
-          : 'Waiting to see the snippet. Load a page of your app once it is installed.'}
-      </p>
+      {/* Installing is a one-off. Once the snippet has been seen, the tag
+          folds away: this page is about processes from then on. */}
+      {app.lastSeenAt ? (
+        <details className="install done">
+          <summary>
+            <span className="seen">Snippet installed</span>
+            <span className="muted">
+              last seen on {app.lastSeenOrigin ?? 'an unknown address'},{' '}
+              {app.lastSeenAt.toLocaleString()}
+            </span>
+          </summary>
+          <pre className="code">{snippetTag}</pre>
+        </details>
+      ) : (
+        <div className="install">
+          <h2>Install</h2>
+          <p className="muted">Paste this into the app, just before the closing body tag.</p>
+          <pre className="code">{snippetTag}</pre>
+          <p className="muted">Waiting to see the snippet. Load a page of your app once it is.</p>
+        </div>
+      )}
 
       {unknownOrigins.length > 0 ? (
         <UnknownOrigins
@@ -49,12 +62,17 @@ export default async function AppPage({ params }: { params: Promise<{ appId: str
         />
       ) : null}
 
-      <h2>Processes</h2>
-      {can(user.role, 'flow:create') ? (
-        <RecordButton appId={app.id} origins={app.origins} />
-      ) : (
-        <p className="muted">Your role can view processes but not record them.</p>
-      )}
+      <div className="row section-head">
+        <h2>
+          Processes
+          {flows.length > 0 ? <span className="count">{flows.length}</span> : null}
+        </h2>
+        {can(user.role, 'flow:create') ? (
+          <RecordButton appId={app.id} origins={app.origins} />
+        ) : (
+          <p className="muted">Your role can view processes but not record them.</p>
+        )}
+      </div>
 
       <Processes
         appId={app.id}
