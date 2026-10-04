@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { readPing, recordPing } from '../../../../lib/apps/install'
+import { allowedHeaders } from '../../../../lib/http/cors'
 
 /**
  * "The snippet is alive on this page."
@@ -24,15 +25,18 @@ export async function POST(request: Request): Promise<NextResponse> {
 }
 
 /** Browsers may preflight this when a page sends JSON. */
-export function OPTIONS(): NextResponse {
-  return new NextResponse(null, { status: 204, headers: corsHeaders() })
+export function OPTIONS(request: Request): NextResponse {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders(request.headers.get('access-control-request-headers')),
+  })
 }
 
-function corsHeaders(): Record<string, string> {
+function corsHeaders(requested: string | null = null): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'content-type',
+    'Access-Control-Allow-Headers': allowedHeaders(requested),
     'Cache-Control': 'no-store',
   }
 }
