@@ -3,6 +3,7 @@ import { isPublicKey } from '../../../../lib/apps/keys'
 import { isAllowedOrigin } from '../../../../lib/apps/origins'
 import { buildConfig, configEtag, readFormatVersion } from '../../../../lib/flows/config'
 import { getDb } from '../../../../lib/db'
+import { allowedHeaders } from '../../../../lib/http/cors'
 
 /**
  * What an app's snippet asks for on page load.
@@ -65,7 +66,9 @@ export function OPTIONS(request: Request): NextResponse {
     headers: {
       'Access-Control-Allow-Origin': origin || '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'content-type, if-none-match',
+      'Access-Control-Allow-Headers': allowedHeaders(
+        request.headers.get('access-control-request-headers'),
+      ),
       'Access-Control-Max-Age': '600',
       Vary: 'Origin',
     },
