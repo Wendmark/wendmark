@@ -9,6 +9,7 @@
     "pnpm": ">=9 <10"
   },
   "scripts": {
+    "bootstrap": "node scripts/setup.mjs",
     "dev": "turbo run dev --filter=@wendmark/portal --filter=@wendmark/playground --filter=@wendmark/snippet",
     "build": "turbo run build",
     "test": "turbo run test && vitest run --config scripts/vitest.config.ts",
