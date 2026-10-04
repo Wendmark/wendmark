@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { redeemAuthorToken } from '../../../../../lib/auth/author-tokens'
 import { getDb } from '../../../../../lib/db'
 import { isAllowedOrigin } from '../../../../../lib/apps/origins'
+import { allowedHeaders } from '../../../../../lib/http/cors'
 
 /**
  * The snippet swapping a one-time token for an author session.
@@ -52,7 +53,9 @@ export async function OPTIONS(request: Request): Promise<NextResponse> {
     headers: {
       'Access-Control-Allow-Origin': origin || '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'content-type',
+      'Access-Control-Allow-Headers': allowedHeaders(
+        request.headers.get('access-control-request-headers'),
+      ),
       'Access-Control-Max-Age': '600',
       Vary: 'Origin',
     },

@@ -5,6 +5,7 @@ import { isAllowedOrigin } from '../../../../../lib/apps/origins'
 import { isWithinSizeLimit, readDraftRequest, MAX_BODY_BYTES } from '../../../../../lib/flows/draft'
 import { saveAuthorDraft } from '../../../../../lib/flows/service'
 import { createLimiter } from '../../../../../lib/rate-limit'
+import { allowedHeaders } from '../../../../../lib/http/cors'
 
 /**
  * Author mode saving what it recorded.
@@ -65,7 +66,9 @@ export function OPTIONS(request: Request): NextResponse {
     headers: {
       'Access-Control-Allow-Origin': origin || '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'content-type',
+      'Access-Control-Allow-Headers': allowedHeaders(
+        request.headers.get('access-control-request-headers'),
+      ),
       'Access-Control-Max-Age': '600',
       Vary: 'Origin',
     },
