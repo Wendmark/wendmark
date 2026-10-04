@@ -87,6 +87,8 @@ pnpm lint           # eslint (boundaries included), --max-warnings 0
 pnpm size           # snippet gzipped size, fails above 30 KB
 pnpm format         # prettier --write
 
+pnpm bootstrap      # first run: database, .env, migrations, example data
+
 # the portal's database (Postgres via Prisma 7 with the pg driver adapter)
 docker compose up -d                        # local Postgres on :5433
 pnpm --filter @wendmark/portal db:migrate   # create and apply a migration
