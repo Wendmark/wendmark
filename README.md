@@ -74,3 +74,19 @@ single sign-on. See [docs/decisions/auth.md](docs/decisions/auth.md).
 | `pnpm format`    | Prettier                                                        |
 
 CI (`.github/workflows/ci.yml`) runs typecheck, lint, test and size on every PR.
+
+## Licence
+
+Two licences, chosen for where each part ends up running.
+
+| Path                                                | Licence        |
+| --------------------------------------------------- | -------------- |
+| `packages/core`, `packages/dom`, `packages/snippet` | **Apache-2.0** |
+| `apps/portal`, `apps/playground`, everything else   | **AGPL-3.0**   |
+
+The snippet runs inside other companies' products, so it carries a permissive
+licence: paste the script tag and nothing is asked of your own source. The
+portal is the part someone could host as a service, so it carries the AGPL —
+run a modified copy for other people and you publish the modifications.
+
+[LICENSING.md](LICENSING.md) explains what that means in practice.
