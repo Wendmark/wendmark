@@ -29,27 +29,34 @@ For how each part works and why, start with
 
 ## Setup
 
-Requirements: **Node 22** (see `.nvmrc`) and **pnpm 9**. The `packageManager`
-field pins pnpm, so with Corepack enabled the right version is used
-automatically.
+Requirements: **Node 22** (see `.nvmrc`), **pnpm 9**, and Docker for the
+database. The `packageManager` field pins pnpm, so with Corepack enabled the
+right version is used automatically.
 
 ```bash
 corepack enable
 pnpm install
-docker compose up -d                       # Postgres for the portal
-cp apps/portal/.env.example apps/portal/.env
-pnpm --filter @wendmark/portal db:migrate   # apply migrations
+pnpm bootstrap
 pnpm dev
 ```
 
-Already have a Postgres you would rather use? Point `DATABASE_URL` at it and
-skip the compose file.
+`pnpm bootstrap` starts Postgres, writes `apps/portal/.env` with a generated
+`AUTH_SECRET`, applies the migrations and seeds an example organization, app
+and process. It is safe to run again: it never overwrites an existing `.env`,
+and the migration and seed are both idempotent.
 
-Then open the portal at http://localhost:3100. Add an app, paste its script
-tag into that app, and the portal will confirm it has seen the snippet. A fresh database sends you to
-**/setup** to create your organization and its first administrator. If you ran
-`db:seed` instead, sign in as `dev@example.com` with the password the seed
-prints.
+Already have a Postgres you would rather use? Copy
+`apps/portal/.env.example` to `apps/portal/.env`, point `DATABASE_URL` at it,
+then run `pnpm bootstrap` — it leaves your database alone and does the rest.
+
+Then open the portal at http://localhost:3100 and sign in as
+`dev@example.com` with the password the seed printed. Add an app, paste its
+script tag into that app, and the portal will confirm it has seen the
+snippet.
+
+A real installation does not use the seed: an empty database sends you to
+**/setup** to create your organization and its first administrator, and that
+screen closes for good once any user exists.
 
 Signing in uses an email and a password by default: no mail server is
 required. Set `OIDC_ISSUER`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` to add
@@ -65,6 +72,7 @@ single sign-on. See [docs/decisions/auth.md](docs/decisions/auth.md).
 
 | Command          | What it does                                                    |
 | ---------------- | --------------------------------------------------------------- |
+| `pnpm bootstrap` | Database, configuration, migrations and example data            |
 | `pnpm dev`       | Portal + playground + snippet watch                             |
 | `pnpm build`     | Build everything (snippet is built before the portal)           |
 | `pnpm test`      | Unit tests in every package, plus the repo-level boundary tests |
