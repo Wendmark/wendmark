@@ -1,6 +1,7 @@
 {
   "name": "wendmark",
   "private": true,
+  "license": "SEE LICENSE IN LICENSING.md",
   "type": "module",
   "packageManager": "pnpm@9.15.9",
   "engines": {
