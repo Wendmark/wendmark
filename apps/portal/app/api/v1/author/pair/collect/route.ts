@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { collectPairing } from '../../../../../../lib/auth/pairing'
+import { allowedHeaders } from '../../../../../../lib/http/cors'
 
 /**
  * A snippet asking whether its request has been approved yet.
@@ -31,18 +32,24 @@ export async function POST(request: Request): Promise<NextResponse> {
 }
 
 export function OPTIONS(request: Request): NextResponse {
-  return new NextResponse(null, { status: 204, headers: cors(request.headers.get('origin') ?? '') })
+  return new NextResponse(null, {
+    status: 204,
+    headers: cors(
+      request.headers.get('origin') ?? '',
+      request.headers.get('access-control-request-headers'),
+    ),
+  })
 }
 
 function waiting(origin: string): NextResponse {
   return NextResponse.json({ waiting: true }, { status: 202, headers: cors(origin) })
 }
 
-function cors(origin: string): Record<string, string> {
+function cors(origin: string, requested: string | null = null): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'content-type',
+    'Access-Control-Allow-Headers': allowedHeaders(requested),
     'Cache-Control': 'no-store',
     Vary: 'Origin',
   }
