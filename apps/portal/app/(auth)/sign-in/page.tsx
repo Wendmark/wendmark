@@ -5,6 +5,12 @@ import { getEnv, hasOidc } from '../../../lib/env'
 import { SignInForm } from './sign-in-form'
 
 export const metadata = { title: 'Sign in to Wendmark' }
+/**
+ * Never prerendered: what this page shows depends on whether any user exists
+ * yet, which is a question only the database can answer and only at the
+ * moment someone asks.
+ */
+export const dynamic = 'force-dynamic'
 
 export default async function SignInPage() {
   // A brand new instance has nobody to sign in as yet.
