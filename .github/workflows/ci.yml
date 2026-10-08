@@ -16,6 +16,25 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    # The portal's service layer is tested against a real Postgres, because
+    # the bugs worth catching there are two queries disagreeing with each
+    # other — which a mock cannot have an opinion about.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: wendmark
+          POSTGRES_PASSWORD: wendmark
+          POSTGRES_DB: wendmark_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U wendmark"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +56,14 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Test against a real database
+        run: pnpm --filter @wendmark/portal test:db
+        env:
+          DATABASE_URL: postgresql://wendmark:wendmark@localhost:5433/wendmark_test?schema=public
+          # Not used by these tests, but lib/env.ts validates the whole
+          # environment the first time anything reads it.
+          AUTH_SECRET: ci-secret-not-used-for-anything-real-0000
 
       - name: Snippet size budget (30 KB gzipped)
         run: pnpm size
