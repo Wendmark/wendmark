@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import type { NextConfig } from 'next'
 
 /**
@@ -14,6 +15,13 @@ const SNIPPET_MAX_AGE_SECONDS = 300
 const config: NextConfig = {
   // Workspace packages ship TypeScript source; Next compiles them.
   transpilePackages: ['@wendmark/core'],
+
+  // A self-contained server plus only the node_modules it actually reaches,
+  // so the deployed image does not carry the whole monorepo. The tracing
+  // root has to be the workspace root or Next follows the symlinks pnpm
+  // leaves and misses files that live above apps/portal.
+  output: 'standalone',
+  outputFileTracingRoot: join(import.meta.dirname, '../..'),
 
   async headers() {
     return [

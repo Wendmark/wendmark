@@ -38,9 +38,28 @@ export function hasOidc(env: Env): boolean {
   return Boolean(env.OIDC_ISSUER && env.OIDC_CLIENT_ID && env.OIDC_CLIENT_SECRET)
 }
 
+/**
+ * An empty variable means the same as an absent one.
+ *
+ * Compose, Kubernetes and most CI systems have no way to leave an optional
+ * variable out: `OIDC_ISSUER: ${OIDC_ISSUER:-}` arrives as an empty string,
+ * which `.optional()` does not accept and `.url()` rejects. Treating blank
+ * as missing is what every one of those tools means by it.
+ */
+function withoutBlanks(
+  source: Record<string, string | undefined>,
+): Record<string, string | undefined> {
+  const cleaned: Record<string, string | undefined> = {}
+  for (const [key, value] of Object.entries(source)) {
+    if (value !== undefined && value.trim() === '') continue
+    cleaned[key] = value
+  }
+  return cleaned
+}
+
 /** Reads and checks environment values, explaining anything that is wrong. */
 export function parseEnv(source: Record<string, string | undefined>): Env {
-  const parsed = EnvSchema.safeParse(source)
+  const parsed = EnvSchema.safeParse(withoutBlanks(source))
   if (!parsed.success) {
     const problems = parsed.error.issues.map(
       (issue) => `  ${issue.path.join('.')}: ${issue.message}`,

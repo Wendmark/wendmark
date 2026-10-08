@@ -1,0 +1,65 @@
+# The portal and its database, as you would actually run them.
+#
+#   cp .env.prod.example .env.prod   # and fill it in
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# This is not the file used for local development — that is
+# docker-compose.yml, which starts Postgres alone so `pnpm dev` can use it.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wendmark}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your env file}
+      POSTGRES_DB: ${POSTGRES_DB:-wendmark}
+    volumes:
+      - wendmark-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-wendmark}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Not published. Only the portal needs to reach it.
+
+  # Applies any pending migrations, then exits. The portal image does not
+  # carry the Prisma CLI, so this runs from the build stage, which does.
+  # Prisma takes an advisory lock, so running this while another copy is
+  # already migrating waits rather than colliding.
+  migrate:
+    build:
+      context: .
+      target: build
+    command: pnpm --filter @wendmark/portal exec prisma migrate deploy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wendmark}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-wendmark}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  portal:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wendmark}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-wendmark}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in your env file}
+      # Auth.js needs to know the address people reach the portal on, because
+      # it is behind your proxy and cannot work it out from the request.
+      AUTH_URL: ${AUTH_URL:?set AUTH_URL to the public address of the portal}
+      AUTH_TRUST_HOST: 'true'
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_NAME: ${OIDC_NAME:-single sign-on}
+    ports:
+      - '${PORTAL_PORT:-3100}:3100'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  wendmark-data:
