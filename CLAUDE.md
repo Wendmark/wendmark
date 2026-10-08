@@ -82,12 +82,20 @@ pnpm install        # Node 22, pnpm 9 (see .nvmrc / packageManager)
 pnpm dev            # portal :3100 + playground :5174 + snippet watch
 pnpm build          # everything; snippet -> apps/portal/public/snippet.js
 pnpm test           # vitest in each package + scripts/boundaries.test.ts
+                    # (fast; no database needed)
 pnpm typecheck      # tsc --noEmit everywhere
 pnpm lint           # eslint (boundaries included), --max-warnings 0
 pnpm size           # snippet gzipped size, fails above 30 KB
 pnpm format         # prettier --write
 
 pnpm bootstrap      # first run: database, .env, migrations, example data
+
+# The portal's service layer against a real Postgres. Named *.db.test.ts and
+# kept out of `pnpm test`, so the fast tests need nothing set up. The tests
+# empty every table, so they refuse to run unless the database name contains
+# "test".
+DATABASE_URL="postgresql://wendmark:wendmark@localhost:5433/wendmark_test" \
+  pnpm --filter @wendmark/portal test:db
 
 # the portal's database (Postgres via Prisma 7 with the pg driver adapter)
 docker compose up -d                        # local Postgres on :5433
