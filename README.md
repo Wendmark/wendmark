@@ -83,6 +83,18 @@ single sign-on. See [docs/decisions/auth.md](docs/decisions/auth.md).
 
 CI (`.github/workflows/ci.yml`) runs typecheck, lint, test and size on every PR.
 
+## Deploying
+
+Running it somewhere other than your laptop:
+
+```bash
+cp .env.prod.example .env.prod          # fill in the three required values
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+```
+
+[docs/deploying.md](docs/deploying.md) covers the settings, CSP for customer
+apps, key rotation, what is stored, and upgrading.
+
 ## Licence
 
 Two licences, chosen for where each part ends up running.
