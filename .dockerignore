@@ -1,0 +1,31 @@
+# The build installs its own dependencies and builds its own output. Sending
+# the host's copies wastes time and risks a native module built for the wrong
+# platform ending up in the image.
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+.turbo
+**/.turbo
+
+# Generated during the build from prisma/schema.prisma.
+apps/portal/generated
+
+# Build artifacts the snippet writes into the portal's public directory.
+apps/portal/public/snippet.js
+apps/portal/public/author.js
+
+# Secrets never belong in an image.
+.env
+**/.env
+!**/.env.example
+
+# Not needed to build or run the portal.
+.git
+.github
+legacy
+docs
+*.md
+!README.md

@@ -3,6 +3,12 @@ import { needsSetup } from '../../lib/auth/setup'
 import { SetupForm } from './setup-form'
 
 export const metadata = { title: 'Set up Wendmark' }
+/**
+ * Never prerendered: what this page shows depends on whether any user exists
+ * yet, which is a question only the database can answer and only at the
+ * moment someone asks.
+ */
+export const dynamic = 'force-dynamic'
 
 /** First run: create the organization and its first administrator. */
 export default async function SetupPage() {

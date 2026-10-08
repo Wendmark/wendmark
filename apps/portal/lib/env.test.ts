@@ -62,3 +62,43 @@ describe('single sign-on', () => {
     expect(() => parseEnv({ ...valid, ...oidc, OIDC_ISSUER: 'login.example.com' })).toThrow()
   })
 })
+
+describe('variables that arrive empty', () => {
+  const required = {
+    DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
+    AUTH_SECRET: 'x'.repeat(32),
+  }
+
+  it('treats a blank optional variable as absent', () => {
+    // Compose writes `OIDC_ISSUER: ${OIDC_ISSUER:-}` as an empty string,
+    // which .optional() does not accept and .url() rejects.
+    const env = parseEnv({
+      ...required,
+      OIDC_ISSUER: '',
+      OIDC_CLIENT_ID: '',
+      OIDC_CLIENT_SECRET: '',
+    })
+
+    expect(env.OIDC_ISSUER).toBeUndefined()
+    expect(hasOidc(env)).toBe(false)
+  })
+
+  it('treats whitespace as absent too', () => {
+    expect(parseEnv({ ...required, OIDC_CLIENT_ID: '   ' }).OIDC_CLIENT_ID).toBeUndefined()
+  })
+
+  it('still reads a variable that was actually set', () => {
+    const env = parseEnv({
+      ...required,
+      OIDC_ISSUER: 'https://login.example.com',
+      OIDC_CLIENT_ID: 'id',
+      OIDC_CLIENT_SECRET: 'secret',
+    })
+
+    expect(hasOidc(env)).toBe(true)
+  })
+
+  it('still complains about a required variable left blank', () => {
+    expect(() => parseEnv({ ...required, AUTH_SECRET: '' })).toThrow(/AUTH_SECRET/)
+  })
+})

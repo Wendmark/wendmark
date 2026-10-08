@@ -55,49 +55,59 @@ function oidcProvider(): Provider[] {
   return [{ id: 'oidc', name: env.OIDC_NAME, type: 'oidc', issuer, clientId, clientSecret }]
 }
 
-export const authConfig: NextAuthConfig = {
-  adapter: PrismaAdapter(getDb()),
-  providers: [credentialsProvider(), ...oidcProvider()],
-  // JWT sessions: nothing to store, nothing to look up. Individual sessions
-  // cannot be deleted, so user.sessionVersion is how revocation works — see
-  // docs/decisions/auth.md.
-  session: { strategy: 'jwt', maxAge: SESSION_MAX_AGE_SECONDS },
-  pages: { signIn: '/sign-in' },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user?.id) token.sub = user.id
-      if (!token.sub) return token
+/**
+ * Built when a request arrives, not when this module is imported.
+ *
+ * The adapter needs a database client and the providers need the
+ * environment, and reaching for either at import time means `next build`
+ * cannot collect this route without a live DATABASE_URL — which is exactly
+ * what `getEnv()` and `getDb()` are lazy to avoid.
+ */
+export function authConfig(): NextAuthConfig {
+  return {
+    adapter: PrismaAdapter(getDb()),
+    providers: [credentialsProvider(), ...oidcProvider()],
+    // JWT sessions: nothing to store, nothing to look up. Individual sessions
+    // cannot be deleted, so user.sessionVersion is how revocation works — see
+    // docs/decisions/auth.md.
+    session: { strategy: 'jwt', maxAge: SESSION_MAX_AGE_SECONDS },
+    pages: { signIn: '/sign-in' },
+    callbacks: {
+      async jwt({ token, user }) {
+        if (user?.id) token.sub = user.id
+        if (!token.sub) return token
 
-      // Read membership and session version on each renewal, so a role change
-      // or a forced sign-out takes effect without waiting for expiry.
-      const account = await getDb().user.findUnique({
-        where: { id: token.sub },
-        select: {
-          sessionVersion: true,
-          memberships: {
-            select: { organizationId: true, role: true },
-            orderBy: { createdAt: 'asc' },
-            take: 1,
+        // Read membership and session version on each renewal, so a role change
+        // or a forced sign-out takes effect without waiting for expiry.
+        const account = await getDb().user.findUnique({
+          where: { id: token.sub },
+          select: {
+            sessionVersion: true,
+            memberships: {
+              select: { organizationId: true, role: true },
+              orderBy: { createdAt: 'asc' },
+              take: 1,
+            },
           },
-        },
-      })
-      if (!account) return {}
+        })
+        if (!account) return {}
 
-      const known = typeof token['sessionVersion'] === 'number' ? token['sessionVersion'] : null
-      if (known !== null && known !== account.sessionVersion) return {}
+        const known = typeof token['sessionVersion'] === 'number' ? token['sessionVersion'] : null
+        if (known !== null && known !== account.sessionVersion) return {}
 
-      token['sessionVersion'] = account.sessionVersion
-      const membership = account.memberships[0]
-      token['organizationId'] = membership?.organizationId ?? null
-      token['role'] = membership?.role ?? null
-      return token
+        token['sessionVersion'] = account.sessionVersion
+        const membership = account.memberships[0]
+        token['organizationId'] = membership?.organizationId ?? null
+        token['role'] = membership?.role ?? null
+        return token
+      },
+      session({ session, token }) {
+        if (token.sub) session.user.id = token.sub
+        session.user.organizationId =
+          typeof token['organizationId'] === 'string' ? token['organizationId'] : null
+        session.user.role = typeof token['role'] === 'string' ? token['role'] : null
+        return session
+      },
     },
-    session({ session, token }) {
-      if (token.sub) session.user.id = token.sub
-      session.user.organizationId =
-        typeof token['organizationId'] === 'string' ? token['organizationId'] : null
-      session.user.role = typeof token['role'] === 'string' ? token['role'] : null
-      return session
-    },
-  },
+  }
 }
