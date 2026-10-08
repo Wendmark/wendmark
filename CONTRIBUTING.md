@@ -26,6 +26,20 @@ pnpm typecheck && pnpm lint && pnpm test
 
 For anything in `packages/snippet`, also `pnpm size`.
 
+Changing the portal's service layer? There are tests against a real Postgres
+too. They are not part of `pnpm test`, because a contributor fixing a typo
+should not need Docker:
+
+```bash
+docker exec wendmark-postgres createdb -U wendmark wendmark_test   # once
+DATABASE_URL="postgresql://wendmark:wendmark@localhost:5433/wendmark_test" \
+  pnpm --filter @wendmark/portal test:db
+```
+
+They empty every table between files, so they refuse to run unless the
+database name contains "test". That guard is the only thing standing between
+a mistyped URL and every process you have recorded.
+
 CI runs all four. None of them is advisory — `pnpm lint` includes the
 dependency-boundary rules, and a violating import fails the build.
 
