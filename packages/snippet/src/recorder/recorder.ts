@@ -1,5 +1,12 @@
 import type { ActionStep, Flow, InputStep, Target } from '@wendmark/core'
-import { fingerprint, findInteractiveTarget, getRole, isInteractive, pagePath } from '@wendmark/dom'
+import {
+  fingerprint,
+  findInteractiveTarget,
+  getRole,
+  isInRepeatedStructure,
+  isInteractive,
+  pagePath,
+} from '@wendmark/dom'
 import { createOverlay, OVERLAY_TAG } from '../overlay/overlay'
 import { createRecordingBadge } from './badge'
 
@@ -139,7 +146,11 @@ export function startRecording(options: RecordingOptions = {}): Recording {
       type: 'action',
       id: `s${steps.length + 1}`,
       text: describe(target),
-      dynamic: false,
+      // A click on something in a list is a click on the author's own data,
+      // and a step that goes looking for their row in somebody else's
+      // account never finds it. Guessed, not decided: the panel shows the
+      // guess and the author can disagree.
+      dynamic: isInRepeatedStructure(element),
       target,
     }
     steps.push(step)

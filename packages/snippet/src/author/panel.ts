@@ -123,7 +123,7 @@ const PANEL_CSS = `
     border-radius: 10px;
   }
   [data-wendmark="recorder"] .step:hover {
-    background: rgba(90, 72, 232, 0.06);
+    background: rgba(14, 92, 87, 0.06);
   }
   [data-wendmark="recorder"] .marker {
     width: 22px;
@@ -178,8 +178,8 @@ const PANEL_CSS = `
     color: #2a2833;
   }
   [data-wendmark="recorder"] .step-actions button[aria-pressed="true"] {
-    background: rgba(90, 72, 232, 0.12);
-    border-color: rgba(90, 72, 232, 0.4);
+    background: rgba(14, 92, 87, 0.12);
+    border-color: rgba(14, 92, 87, 0.4);
     color: #0e5c57;
   }
   [data-wendmark="recorder"] .empty {
