@@ -34,7 +34,9 @@ internet), and the usual automated-scanner findings on headers we do not set.
 
 ## What is already known, and deliberate
 
-These are design decisions rather than oversights. The reasoning is in
+These are design decisions rather than oversights. The full trust model,
+including what it does **not** protect, is in
+[docs/security.md](docs/security.md); the decisions behind it are in
 [docs/decisions](docs/decisions).
 
 **Author mode cannot be hidden from a determined user.** Any script running in
