@@ -44,6 +44,16 @@ The zod schemas stay `strictObject`, so the **portal** still refuses unknown
 keys from a snippet. That direction is not skew — a snippet sending a field
 its own portal has never heard of is a bug, not a version difference.
 
+**The rule holds only while ignoring the field is harmless**, and that is
+worth checking each time rather than assuming. A field that decorates a step
+can be dropped safely. A field that changes what the user is asked to do
+cannot: a `times: 3` on a step meaning "press this three times" would be
+ignored by an older snippet, which would then guide somebody to press it
+once and say nothing was wrong. Silence is the problem — an old snippet
+refusing a flow is visible, an old snippet quietly giving wrong guidance is
+not. When ignoring a field would change the outcome, express it some other
+way. Repeated presses became three separate steps for exactly this reason.
+
 **2. A new step type counts as breaking, and is caught by shape, not by
 number.**
 
