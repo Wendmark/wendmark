@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { SCHEMA_VERSION } from '@wendmark/core'
+import { SCHEMA_VERSION, type LabelPolicy } from '@wendmark/core'
 import { getDb } from '../db'
 import { stepCount } from './list'
 import { appliesTo } from './targeting'
@@ -36,6 +36,16 @@ export interface ConfigFlow {
 export interface Config {
   flows: ConfigFlow[]
   launcher: { enabled: boolean; label: string }
+  /**
+   * Whether this app lets end users report a problem, and how much of what
+   * the page says a report may keep.
+   *
+   * The policy is sent so the snippet can mask before it shows the user the
+   * preview — the preview has to be the thing that will be sent, not a
+   * tidier version of it. The portal applies the policy again on write and
+   * does not take the snippet's word for it.
+   */
+  reports: { enabled: boolean; labels: LabelPolicy }
 }
 
 export interface ConfigQuery {
@@ -99,7 +109,11 @@ export async function buildConfig(appId: string, query: ConfigQuery): Promise<Co
     })
   }
 
-  return { flows, launcher: { enabled: settings.launcher, label: settings.launcherLabel } }
+  return {
+    flows,
+    launcher: { enabled: settings.launcher, label: settings.launcherLabel },
+    reports: { enabled: settings.reports, labels: settings.reportLabels },
+  }
 }
 
 /**

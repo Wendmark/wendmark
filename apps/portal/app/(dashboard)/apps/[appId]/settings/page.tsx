@@ -5,6 +5,7 @@ import { can } from '../../../../../lib/permissions'
 import { AppSettingsForm } from './app-settings-form'
 import { DangerZone } from './danger-zone'
 import { LauncherSetting } from './launcher-setting'
+import { ReportsSetting } from './reports-setting'
 import { readAppSettings } from '../../../../../lib/apps/settings'
 
 export const metadata = { title: 'App settings' }
@@ -37,6 +38,14 @@ export default async function AppSettingsPage({ params }: { params: Promise<{ ap
         appId={app.id}
         enabled={settings.launcher}
         label={settings.launcherLabel}
+        canEdit={can(user.role, 'app:update')}
+      />
+
+      <ReportsSetting
+        appId={app.id}
+        enabled={settings.reports}
+        labels={settings.reportLabels}
+        retentionDays={settings.reportRetentionDays}
         canEdit={can(user.role, 'app:update')}
       />
 
