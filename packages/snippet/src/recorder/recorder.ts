@@ -110,6 +110,14 @@ function isWorthRecording(element: Element): boolean {
   return element.matches('input, select, textarea, button, a[href]')
 }
 
+/**
+ * Two clicks on one control closer together than this are one intention.
+ *
+ * A system double-click is around 500ms; anything slower is somebody
+ * pressing a thing again because they meant to.
+ */
+const SAME_INTENT_MS = 500
+
 /** Starts watching the user's clicks and turning them into steps. */
 export function startRecording(options: RecordingOptions = {}): Recording {
   const doc = options.doc ?? document
@@ -117,6 +125,7 @@ export function startRecording(options: RecordingOptions = {}): Recording {
 
   const steps: (ActionStep | InputStep)[] = []
   let lastElement: Element | null = null
+  let lastClickAt = 0
   let recording = true
 
   const showBadge = options.showBadge ?? true
@@ -137,9 +146,15 @@ export function startRecording(options: RecordingOptions = {}): Recording {
 
     const element = findInteractiveTarget(clicked)
     if (!isWorthRecording(element)) return
-    // A double click, or a button that does not respond at once, is one step.
-    if (element === lastElement) return
+
+    // A double click, or an impatient second press on a button that has not
+    // responded yet, is one step. A later press of the same control is a
+    // second step: a quantity stepper clicked three times means three, and
+    // recording that as one leaves the person following it with one.
+    const now = Date.now()
+    if (element === lastElement && now - lastClickAt < SAME_INTENT_MS) return
     lastElement = element
+    lastClickAt = now
 
     const target: Target = { ...fingerprint(element), url: pagePath(view.location.href) }
     const step: ActionStep = {
@@ -177,6 +192,7 @@ export function startRecording(options: RecordingOptions = {}): Recording {
     if (last && lastElement === element) steps.pop()
 
     lastElement = element
+    lastClickAt = Date.now()
     const step: InputStep = {
       type: 'input',
       id: `s${steps.length + 1}`,
