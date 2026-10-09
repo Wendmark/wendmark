@@ -1,3 +1,4 @@
+import { Wordmark } from '../wordmark'
 import { redirect } from 'next/navigation'
 import { needsSetup } from '../../lib/auth/setup'
 import { SetupForm } from './setup-form'
@@ -16,6 +17,7 @@ export default async function SetupPage() {
 
   return (
     <main className="card">
+      <Wordmark />
       <h1>Set up Wendmark</h1>
       <p className="muted">
         This creates your organization and its first administrator. It is only available while no
