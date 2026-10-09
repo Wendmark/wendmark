@@ -9,11 +9,13 @@ import {
   deleteApp,
   rotateKey,
   setLauncher,
+  setReports,
   updateApp,
   type Context,
 } from '../lib/apps/service'
 import { InvalidInputError, NotFoundError } from '../lib/apps/service'
 import { NotAllowedError } from '../lib/permissions'
+import { readLabelPolicy } from '@wendmark/core'
 
 export interface FormResult {
   error?: string
@@ -116,6 +118,22 @@ export async function setLauncherAction(
     await setLauncher(await context(), appId, {
       enabled: form.get('enabled') === 'true',
       ...(form.has('label') ? { label: String(form.get('label') ?? '') } : {}),
+    })
+  } catch (error) {
+    return explain(error)
+  }
+  revalidatePath(`/apps/${appId}/settings`)
+  return {}
+}
+
+/** Whether end users may report a problem, and what is kept when they do. */
+export async function setReportsAction(_previous: FormResult, form: FormData): Promise<FormResult> {
+  const appId = String(form.get('appId') ?? '')
+  try {
+    await setReports(await context(), appId, {
+      enabled: form.get('enabled') === 'true',
+      ...(form.has('labels') ? { labels: readLabelPolicy(form.get('labels')) } : {}),
+      ...(form.has('retentionDays') ? { retentionDays: Number(form.get('retentionDays')) } : {}),
     })
   } catch (error) {
     return explain(error)

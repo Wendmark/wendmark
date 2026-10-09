@@ -104,6 +104,12 @@ names of buttons, the labels of fields, the structure of pages. For an
 internal tool that is close to a screenshot of the interface. Treat the
 database as you would a copy of your application's source.
 
+They also get **problem reports**, if the app has them switched on, and those
+are the one table where "the shape of an application" is not the whole
+answer. A report is captured on an end user's own screen, so treat that table
+as holding your users' data rather than your interface's. The section below
+says what is and is not in it.
+
 Session tokens are not in there. Author tokens and sessions are stored as
 SHA-256 hashes; the tokens themselves never touch the database.
 
@@ -144,6 +150,32 @@ surrounding context, CSS selectors.
 Three things hold that in place: the recorder does not reach for values; a
 test spies on the value getter and fails if anything reads it; and the schema
 rejects unknown keys server-side.
+
+**Problem reports are the one exception, and they are off by default.** When
+an app turns them on, an end user can retrace something that failed and send
+it. That is a capture of a real session in a real account, so it cannot rest
+on an absence the way everything above does, and it is worth being exact
+about:
+
+- Still no field values, no keystrokes, no screenshots. The same recorder,
+  the same strict schema.
+- Nothing is captured until the user asks, nothing after they stop, and they
+  see the exact list that will be sent and can remove any of it first.
+- By default every label comes off: `name`, `text` and `context` are
+  stripped and each step's wording is rewritten, so a report says "Press a
+  button" where it could have said "Press Issue refund". Paths keep their
+  shape and lose their ids — `/orders/10421` is stored as `/orders/*`.
+- An app can opt into keeping labels. The portal re-applies its own stored
+  policy on write and does not take the snippet's word for what it stripped.
+- What survives masking is structure: selectors, role, test id, shadow path.
+  The one thing that can carry data through is a `data-testid` built from a
+  record id, which no heuristic can tell from a naming convention. That is
+  why the policy is the app operator's to set.
+- Reports are deleted outright after a retention period the app chooses, 90
+  days by default. A hard delete, not the soft delete a process gets.
+
+The app operator is the data controller for all of it. See
+[decisions/problem-reports.md](decisions/problem-reports.md).
 
 **Step snapshots are deliberately not built.** Capturing a picture of each
 step at record time would photograph whatever was on the author's screen,

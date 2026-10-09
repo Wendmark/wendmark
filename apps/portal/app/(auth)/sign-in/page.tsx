@@ -1,3 +1,4 @@
+import { Wordmark } from '../../wordmark'
 import { redirect } from 'next/navigation'
 import { needsSetup } from '../../../lib/auth/setup'
 import { currentUser } from '../../../lib/auth/session'
@@ -22,6 +23,7 @@ export default async function SignInPage() {
 
   return (
     <main className="card">
+      <Wordmark />
       <h1>Sign in</h1>
       <SignInForm ssoName={sso} />
     </main>

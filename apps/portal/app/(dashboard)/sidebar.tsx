@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
+import { Wordmark } from '../wordmark'
 
 export interface SidebarApp {
   id: string
@@ -33,9 +34,8 @@ export function Sidebar({
 
   return (
     <nav className="sidebar" aria-label="Portal">
-      <Link href="/" className="brand">
-        <span className="brand-mark" aria-hidden="true" />
-        Wendmark
+      <Link href="/" className="brand" aria-label="Wendmark, home">
+        <Wordmark height={22} />
       </Link>
 
       <div className="side-section">
