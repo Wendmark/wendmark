@@ -15,6 +15,9 @@ tell you on its own.
 5. [Flows](05-flows.md) — the shared schema, the zod problem, saving and
    listing
 
+The trust model across all of them is in
+[docs/security.md](../security.md).
+
 The rules these follow — guide never act, the dependency table, the snippet's
 constraints — are in [CLAUDE.md](../../CLAUDE.md). Decisions with alternatives
 weighed are in [docs/decisions](../decisions).
