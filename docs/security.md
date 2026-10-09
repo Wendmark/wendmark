@@ -145,11 +145,12 @@ Three things hold that in place: the recorder does not reach for values; a
 test spies on the value getter and fails if anything reads it; and the schema
 rejects unknown keys server-side.
 
-**Step snapshots would change this.** Capturing a picture of each step at
-record time ([issue #31](https://github.com/Wendmark/wendmark/issues/31))
-would photograph whatever was on the author's screen, which in a real
-application is real customer data. That is why it is not built: it needs a
-decision about consent and redaction first, not an implementation.
+**Step snapshots are deliberately not built.** Capturing a picture of each
+step at record time would photograph whatever was on the author's screen,
+which in a real application is somebody's real order. It would also turn a
+guarantee that holds because nothing happens — nothing reads a value — into
+one that holds because masking code runs correctly on markup it has never
+seen. See [decisions/step-snapshots.md](decisions/step-snapshots.md).
 
 ## The rest of the surface
 
