@@ -150,22 +150,27 @@ body {
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--s2);
-  font-family: var(--display);
-  font-size: 1.15rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--text);
-  text-decoration: none;
   padding: 0 var(--s2);
+  border-radius: var(--radius);
 }
 
-.brand-mark {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--accent);
-  transform: rotate(45deg);
+.brand:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/*
+ * The lockup carries its own wordmark as outlines, so .brand no longer sets
+ * a typeface: there is no text in it to set.
+ */
+.wordmark {
+  display: block;
+  height: auto;
+  max-width: 100%;
+}
+
+.card .wordmark {
+  margin-bottom: var(--s5);
 }
 
 .side-section {

@@ -1,3 +1,4 @@
+import type { LabelPolicy } from '@wendmark/core'
 import type { App } from '../../generated/prisma/client'
 import { getDb } from '../db'
 import { require as requirePermission } from '../permissions'
@@ -156,6 +157,37 @@ export async function setLauncher(
         ...settings,
         launcher: input.enabled,
         launcherLabel: input.label ?? settings.launcherLabel,
+      }),
+    },
+  })
+}
+
+/**
+ * Turns problem reports on or off, and sets how they are handled.
+ *
+ * Separate from `setLauncher` although both write the same column, because
+ * these are not the same decision. A launcher is a button in somebody's
+ * interface; this is whether a product stores its own customers' data. See
+ * docs/decisions/problem-reports.md.
+ */
+export async function setReports(
+  ctx: Context,
+  appId: string,
+  input: { enabled: boolean; labels?: LabelPolicy; retentionDays?: number },
+): Promise<App> {
+  requirePermission(ctx.role, 'app:update')
+  const existing = await getApp(ctx, appId)
+  if (!existing) throw new NotFoundError()
+
+  const settings = readAppSettings(existing.settings)
+  return getDb().app.update({
+    where: { id: existing.id },
+    data: {
+      settings: writeAppSettings({
+        ...settings,
+        reports: input.enabled,
+        reportLabels: input.labels ?? settings.reportLabels,
+        reportRetentionDays: input.retentionDays ?? settings.reportRetentionDays,
       }),
     },
   })

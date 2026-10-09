@@ -14,6 +14,7 @@ function config(overrides: Partial<Config> = {}): Config {
       },
     ],
     launcher: { enabled: false, label: 'How do I…' },
+    reports: { enabled: false, labels: 'none' },
     ...overrides,
   }
 }
@@ -43,7 +44,7 @@ describe('configEtag', () => {
   })
 
   it('changes when a process is published', () => {
-    const before = configEtag({ flows: [], launcher: { enabled: false, label: 'How do I…' } })
+    const before = configEtag(config({ flows: [] }))
     expect(configEtag(config())).not.toBe(before)
   })
 
