@@ -94,6 +94,8 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 
 [docs/deploying.md](docs/deploying.md) covers the settings, CSP for customer
 apps, key rotation, what is stored, and upgrading.
+[docs/security.md](docs/security.md) is the trust model, including what it
+does not protect.
 
 ## Licence
 
