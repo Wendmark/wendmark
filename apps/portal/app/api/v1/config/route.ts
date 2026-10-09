@@ -84,7 +84,7 @@ export function OPTIONS(request: Request): NextResponse {
  */
 function empty(origin: string): NextResponse {
   return NextResponse.json(
-    { flows: [], launcher: { enabled: false } },
+    { flows: [], launcher: { enabled: false }, reports: { enabled: false, labels: 'none' } },
     { status: 200, headers: { ...cors(origin, []), 'Cache-Control': 'no-store' } },
   )
 }

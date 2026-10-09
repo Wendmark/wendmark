@@ -118,6 +118,7 @@ model App {
 
   organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   flows           Flow[]
+  reports         Report[]
   sightings       OriginSighting[]
   authorTokens    AuthorToken[]
   authorSessions  AuthorSession[]
@@ -284,4 +285,49 @@ model FlowVersion {
 
   @@unique([flowId, version])
   @@map("flow_version")
+}
+
+/// A problem an end user reported: the controls they touched, in order, and
+/// what they say went wrong. Replayable with the player, because its steps
+/// are the same shape a flow's are.
+///
+/// Unlike everything else stored here, this can contain an app's own
+/// customers' data — see docs/decisions/problem-reports.md. Hence three
+/// things: `labels` records which policy produced these steps, `expiresAt`
+/// is set when the row is written rather than decided later, and deleting a
+/// report is a hard delete and not the soft delete flows get.
+model Report {
+  id             String   @id @default(uuid()) @db.Uuid
+  appId          String   @db.Uuid
+  /// What went wrong, in the user's own words.
+  note           String
+  /// The controls they touched, validated with ReportSchema before writing.
+  steps          Json
+  /// The pages they passed through, in order, as masked paths.
+  pages          String[]
+  /// The label policy the portal applied, not the one the snippet claimed.
+  labels         String
+  /// The report format these steps were written in.
+  reportVersion  Int      @default(1)
+  /// The browser's own description of itself. Never parsed or matched on.
+  userAgent      String?
+  /// Which snippet build captured this.
+  snippetVersion String?
+  /// An identifier the app itself passed in, so an operator can reply.
+  /// Stored exactly as given and never interpreted. Indexed because the app
+  /// operator is the data controller and has to be able to answer "delete
+  /// everything about this person".
+  userRef        String?
+  /// The address it was sent from, which was on the app's allowlist.
+  origin         String
+  createdAt      DateTime @default(now())
+  /// When retention runs out and the row is deleted outright.
+  expiresAt      DateTime
+
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@index([appId, createdAt])
+  @@index([appId, userRef])
+  @@index([expiresAt])
+  @@map("report")
 }
