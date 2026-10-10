@@ -1,37 +1,105 @@
-# Wendmark
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/logo/png/wendmark-horizontal-reversed@2x.png">
+    <img src="docs/brand/logo/png/wendmark-horizontal@2x.png" alt="Wendmark" width="300">
+  </picture>
+</p>
 
-Wendmark shows people how to use a web app with an on-screen teaching cursor.
-A product owner records a process once. End users replay it as step-by-step
-guidance: a cursor glides to the next thing to click, and the user clicks it
-themselves. **Wendmark guides only — it never clicks or types for the user.**
+<p align="center">
+  <strong>Show people how to use your app, without doing it for them.</strong>
+</p>
 
-> Status: scaffolding. The packages exist with placeholder exports and the
-> initial flow schema. No product features yet.
+<p align="center">
+  <a href="LICENSING.md"><img alt="Licence: Apache-2.0 and AGPL-3.0" src="https://img.shields.io/badge/licence-Apache--2.0%20%2F%20AGPL--3.0-0e5c57"></a>
+  <a href=".github/workflows/ci.yml"><img alt="CI" src="https://github.com/Wendmark/wendmark/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Snippet size" src="https://img.shields.io/badge/snippet-12.6%20KB%20gzipped-0e5c57">
+</p>
 
-## Repository layout
+---
 
-```
-packages/
-  core/        @wendmark/core     Types and zod schemas (Flow, Step). No DOM, network or Node.
-  dom/         @wendmark/dom      Element fingerprints and resolver. Depends on core.
-  snippet/     @wendmark/snippet  Embeddable player/recorder/UI. Builds to apps/portal/public/snippet.js.
-apps/
-  portal/      @wendmark/portal      Next.js (App Router) portal. Depends on core only.
-  playground/  @wendmark/playground  "Fika" coffee-subscription demo app to test guidance against.
-docs/          How it is built (docs/architecture), decisions, design notes
-legacy/        Old Chrome extension prototype, reference only, to be deleted
-```
+Record a process once. Everyone else replays it as guidance: a teaching cursor
+glides to the next thing to click, a panel shows where they are, and **the
+person clicks it themselves**.
 
-The dependency rules between these are enforced by ESLint. See [CLAUDE.md](CLAUDE.md).
+<p align="center">
+  <img src="docs/images/guiding.png" alt="A demo coffee shop with a Wendmark cursor pointing at the Profile link, a tooltip reading “Open your Profile”, and a panel listing all three steps of the process" width="820">
+</p>
 
-For how each part works and why, start with
-[docs/architecture](docs/architecture/README.md).
+## Why another one of these
 
-## Setup
+Most onboarding tools are built to drive. They click, they fill, they submit —
+and the user ends up somewhere they do not know how they got to. Wendmark
+takes the opposite position, and it is not a preference but a constraint the
+codebase enforces:
+
+> **Wendmark guides. It never acts.**
+>
+> No synthetic clicks. No setting values. No submitting forms. No navigating on
+> someone's behalf. Overlays are `pointer-events: none`, listeners are passive
+> and capture-phase and never call `preventDefault`. A step advances because
+> the person did the thing.
+
+Two consequences fall out of that, and both are the point:
+
+**Nobody is ever stuck in a tour.** The guidance sits beside the application
+rather than in front of it. Click something else, go to another page, ignore
+it — the app behaves exactly as it does without Wendmark.
+
+**It teaches rather than performs.** Somebody who has been guided through
+refunding an order has refunded an order. They can do it again next week.
+
+## What it never records
+
+The recorder reads structure and the labels an application's own designers
+wrote — roles, accessible names, test ids, selectors. It does not read
+**anything anyone types**: not `.value`, not the text content of a field, not
+`contenteditable`, not keystrokes. Password, email and payment fields get no
+special case, because there is no case to make.
+
+Three things hold that up, and all three are things that _do not happen_: the
+recorder never reaches for a value, a test fails if anything touches the value
+getter, and the schema rejects unknown keys server-side. There are no
+screenshots and no session replay —
+[we turned those down on purpose](docs/decisions/step-snapshots.md).
+
+[docs/security.md](docs/security.md) is the full trust model, including what it
+does **not** protect.
+
+## How it works
+
+1. **Record.** From the portal, open your own app and click through the
+   process. Wendmark writes down what you touched, never what you typed.
+2. **Edit.** Reword each step, reorder, drop the stray clicks, add a note.
+   Mark the steps that point at _your own data_ so they are found by shape
+   rather than by name in everybody else's account.
+3. **Publish.** Publishing freezes a version. Editing the draft afterwards
+   never disturbs someone who is mid-process.
+4. **Use.** Your users find it in the launcher, or your own help menu calls
+   `Wendmark.start(id)`.
+
+<p align="center">
+  <img src="docs/images/editing.png" alt="The Wendmark portal showing a three-step process called “Change your grind”, each step with controls to reword it, mark it as the user’s own data, reorder it or remove it" width="820">
+</p>
+
+## Status
+
+Early, and honest about it: **not yet released or versioned**, and the API may
+still move. That said, the whole path works end to end — record, edit, publish,
+target, play, resume — and it is covered by about 900 tests.
+
+| Working                                                           | Not yet                                                                                             |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Recording from inside your own app, paired through the portal     | [Problem reports](https://github.com/Wendmark/wendmark/issues/47) — users retracing what went wrong |
+| Editing, reordering, rewording, publishing with frozen versions   | A browser extension, for apps that cannot add a script tag                                          |
+| URL targeting, listed/hidden processes, pause and restore         | Analytics, flow-health checks, multi-team                                                           |
+| The launcher, progress that survives a reload, shadow DOM support | A hosted service                                                                                    |
+| Email-and-password sign-in, optional OIDC single sign-on          |                                                                                                     |
+| Self-hosting with Docker Compose                                  |                                                                                                     |
+
+## Try it
 
 Requirements: **Node 22** (see `.nvmrc`), **pnpm 9**, and Docker for the
-database. The `packageManager` field pins pnpm, so with Corepack enabled the
-right version is used automatically.
+database.
 
 ```bash
 corepack enable
@@ -42,60 +110,90 @@ pnpm dev
 
 `pnpm bootstrap` starts Postgres, writes `apps/portal/.env` with a generated
 `AUTH_SECRET`, applies the migrations and seeds an example organization, app
-and process. It is safe to run again: it never overwrites an existing `.env`,
-and the migration and seed are both idempotent.
+and process. Run it as often as you like: it never overwrites an existing
+`.env`, and the migration and seed are both idempotent. Already have a
+Postgres? Copy `apps/portal/.env.example`, point `DATABASE_URL` at it, and
+`pnpm bootstrap` leaves your database alone and does the rest.
 
-Already have a Postgres you would rather use? Copy
-`apps/portal/.env.example` to `apps/portal/.env`, point `DATABASE_URL` at it,
-then run `pnpm bootstrap` — it leaves your database alone and does the rest.
+Then open:
 
-Then open the portal at http://localhost:3100 and sign in as
-`dev@example.com` with the password the seed printed. Add an app, paste its
-script tag into that app, and the portal will confirm it has seen the
-snippet.
+- **Portal** — http://localhost:3100, sign in as `dev@example.com` with the
+  password the seed printed
+- **Fika** — http://localhost:5174, a pretend coffee-subscription app to try
+  guidance against
 
-A real installation does not use the seed: an empty database sends you to
+A real installation does not use the seed. An empty database sends you to
 **/setup** to create your organization and its first administrator, and that
 screen closes for good once any user exists.
 
-Signing in uses an email and a password by default: no mail server is
-required. Set `OIDC_ISSUER`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` to add
-single sign-on. See [docs/decisions/auth.md](docs/decisions/auth.md).
+## Using it in your own app
 
-`pnpm dev` starts:
+Add an app in the portal, then paste the tag it gives you:
 
-- Portal: http://localhost:3100 (the snippet is served at `/snippet.js`)
-- Playground (Fika): http://localhost:5174
-- Snippet: tsup in watch mode, rebuilding `apps/portal/public/snippet.js`
+```html
+<script src="https://your-portal.example.com/snippet.js" data-app="wm_…"></script>
+```
 
-## Scripts
+That is the whole integration. The snippet is **12.6 KB gzipped** against a
+30 KB budget enforced in CI, renders everything inside a shadow root with
+`:host { all: initial }`, exposes exactly one global, and uses no framework —
+so it cannot restyle your pages and your pages cannot restyle it.
 
-| Command          | What it does                                                    |
-| ---------------- | --------------------------------------------------------------- |
-| `pnpm bootstrap` | Database, configuration, migrations and example data            |
-| `pnpm dev`       | Portal + playground + snippet watch                             |
-| `pnpm build`     | Build everything (snippet is built before the portal)           |
-| `pnpm test`      | Unit tests in every package, plus the repo-level boundary tests |
-| `pnpm typecheck` | `tsc --noEmit` in every package                                 |
-| `pnpm lint`      | ESLint across the repo, including dependency-boundary rules     |
-| `pnpm size`      | Build the snippet and fail if it exceeds 30 KB gzipped          |
-| `pnpm format`    | Prettier                                                        |
+Wendmark adds nothing to your interface unless you ask. The launcher button is
+**off by default**; call `Wendmark.openLauncher()` from your own help menu, or
+turn it on in the portal and name it whatever suits your product.
 
-CI (`.github/workflows/ci.yml`) runs typecheck, lint, test and size on every PR.
-
-## Deploying
-
-Running it somewhere other than your laptop:
+## Self-hosting
 
 ```bash
-cp .env.prod.example .env.prod          # fill in the three required values
+cp .env.prod.example .env.prod          # three values to fill in
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 ```
 
 [docs/deploying.md](docs/deploying.md) covers the settings, CSP for customer
-apps, key rotation, what is stored, and upgrading.
-[docs/security.md](docs/security.md) is the trust model, including what it
-does not protect.
+apps, key rotation, what is stored and upgrading.
+
+## Documentation
+
+|                                                |                                                                       |
+| ---------------------------------------------- | --------------------------------------------------------------------- |
+| [How it is built](docs/architecture/README.md) | Five walkthroughs: the portal's shape, auth, apps, author mode, flows |
+| [Decisions](docs/decisions)                    | Why things are the way they are — including the ones we turned down   |
+| [Trust model](docs/security.md)                | By attacker, with the gaps named                                      |
+| [Deploying](docs/deploying.md)                 | Running it somewhere other than a laptop                              |
+| [Authoring processes](docs/authoring-flows.md) | Writing a good one                                                    |
+| [Contributing](CONTRIBUTING.md)                | Setup, the rules that are not negotiable, DCO                         |
+
+## Repository layout
+
+```
+packages/
+  core/        @wendmark/core     Types and zod schemas. No DOM, network or Node.
+  dom/         @wendmark/dom      Element fingerprints and the resolver.
+  snippet/     @wendmark/snippet  Player, recorder and UI. One IIFE, 30 KB budget.
+apps/
+  portal/      @wendmark/portal      Next.js portal. Depends on core only.
+  playground/  @wendmark/playground  "Fika", a demo app to try guidance against.
+docs/          Architecture, decisions, security, brand
+legacy/        An early Chrome extension prototype. Reference only — see docs/legacy-notes.md
+```
+
+Which package may import which is a table, and the table is
+[enforced by ESLint](eslint.config.js) with a test proving every rule fires.
+[CLAUDE.md](CLAUDE.md) is the long version of the house rules.
+
+## Contributing
+
+Issues are welcome. So are pull requests, with one request: for anything
+beyond a small fix, **open an issue first** — it is kinder than having work
+rejected on direction after you have written it.
+
+There is **no contributor licence agreement**, and none is planned. We ask for
+a [DCO](https://developercertificate.org/) sign-off (`git commit -s`), which
+means what you contribute cannot quietly be made proprietary later.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the detail. Found a vulnerability?
+Please don't open a public issue — [SECURITY.md](SECURITY.md) says what to do.
 
 ## Licence
 
