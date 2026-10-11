@@ -1,4 +1,5 @@
 import type { FlowSummary } from '../portal/client'
+import { fillPill, PILL_CSS, PILL_HEIGHT } from './pill'
 import { isEmpty, sectionFlows, type LauncherSections } from './state'
 
 /**
@@ -7,50 +8,42 @@ import { isEmpty, sectionFlows, type LauncherSections } from './state'
  * Wendmark is a guest in someone else's product, so this behaves like a
  * proper dialog — focus goes into it, Escape closes it, focus returns where
  * it was — and it is only ever opened because somebody asked for it.
+ *
+ * It is the launcher button, grown: the pill stays where it was and becomes
+ * the panel's bar, and the list unfolds upward out of it. Pressing the bar
+ * folds it back down.
  */
 
+const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+const OPEN_MS = 320
+const CLOSE_MS = 240
+const OPEN_CLIP = 'inset(0 0 0 0 round 16px)'
+
 const CSS = `
-  /* It grows out of the corner the button sits in, so it reads as that
-     button opening rather than as something arriving from nowhere. */
-  @keyframes wendmark-sheet-in {
-    from { opacity: 0; transform: translateY(8px) scale(0.96); }
-    to   { opacity: 1; transform: none; }
-  }
-
-  .sheet {
-    transform-origin: bottom right;
-    animation: wendmark-sheet-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .sheet { animation: none; }
-  }
-
-  .sheet {
+  ${PILL_CSS}
+  /* The shadow sits on a wrapper as a filter, so it follows the clipped
+     shape while it grows. A box-shadow would be clipped away with it. */
+  .frame {
     position: fixed;
     right: 16px;
     bottom: 16px;
     width: min(340px, calc(100vw - 32px));
-    max-height: min(70vh, 560px);
-    overflow-y: auto;
+    filter: drop-shadow(0 12px 28px rgba(20, 18, 40, 0.2));
+  }
+  .sheet {
     pointer-events: auto;
+    display: flex;
+    flex-direction: column;
     background: #fff;
     color: #1f1d2b;
-    border: 1px solid #e4e2ec;
-    border-radius: 14px;
-    box-shadow: 0 12px 40px rgba(20, 18, 40, 0.18);
-    font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-    padding: 14px 16px 16px;
-  }
-  header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  h2 {
-    margin: 0;
-    font-size: 15px;
-    flex: 1;
-    min-width: 0;
+    border-radius: 16px;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  .list {
+    padding: 12px 14px 12px;
+    overflow-y: auto;
+    max-height: calc(min(70vh, 560px) - ${PILL_HEIGHT}px);
   }
   h3 {
     margin: 14px 0 6px;
@@ -59,6 +52,7 @@ const CSS = `
     text-transform: uppercase;
     color: #6b6779;
   }
+  h3:first-child { margin-top: 2px; }
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
   button {
     font: inherit;
@@ -75,13 +69,30 @@ const CSS = `
     border-color: #e4e2ec;
     display: block;
   }
-  .item:hover { background: #f7f7fb; }
-  .item:focus-visible, .close:focus-visible { outline: 2px solid #0e5c57; outline-offset: 2px; }
+  .item:hover { background: #f6f9f8; border-color: #0e5c57; }
+  .item:focus-visible { outline: 2px solid #0e5c57; outline-offset: 2px; }
   .item .meta { display: block; color: #6b6779; font-size: 12px; margin-top: 2px; }
   .item.resume { border-color: #0e5c57; }
-  .close { padding: 4px 8px; color: #6b6779; font-size: 16px; line-height: 1; }
-  .empty { margin: 10px 0 2px; color: #6b6779; }
+  .empty { margin: 4px 0 2px; color: #6b6779; }
   .done { color: #1e7a3c; }
+
+  /* The bar is the pill, stretched to the panel's width. Its contents stay
+     on the right, exactly where the button had them, so nothing jumps. */
+  .bar {
+    display: flex;
+    justify-content: flex-end;
+    flex: none;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #0e5c57;
+    transition: background-color 160ms ease;
+  }
+  .bar:hover { background: #0a4642; }
+  .bar:focus-visible { outline: 2px solid #fff; outline-offset: -4px; border-radius: 12px; }
+  /* Pointing down now: pressing it folds the panel away. */
+  .bar .chevron { transform: rotate(180deg); }
 `
 
 export interface LauncherOptions {
@@ -92,6 +103,12 @@ export interface LauncherOptions {
   completedIds: readonly string[]
   /** Chosen a process. The launcher closes itself first. */
   onChoose: (flowId: string) => void
+  /**
+   * Closed, for any reason: its bar, Escape, a choice, or `close()`.
+   * The panel can close itself, so this is how its owner finds out.
+   * Called once the panel has folded away and left the page.
+   */
+  onClose: () => void
 }
 
 export interface Launcher {
@@ -117,6 +134,9 @@ export function openLauncher(
   style.textContent = CSS
   root.appendChild(style)
 
+  const frame = doc.createElement('div')
+  frame.className = 'frame'
+
   const panel = doc.createElement('div')
   panel.className = 'sheet'
   panel.setAttribute('role', 'dialog')
@@ -130,9 +150,32 @@ export function openLauncher(
   })
   const returnFocus = doc.activeElement
 
-  panel.appendChild(header(doc, options.label, close))
-  panel.appendChild(body(doc, sections, options, choose))
-  root.appendChild(panel)
+  const list = body(doc, sections, options, choose)
+  list.className = 'list'
+  const { bar, pill } = toggleBar(doc, options.label, close)
+  panel.append(list, bar)
+  frame.appendChild(panel)
+  root.appendChild(frame)
+
+  const motion = allowsMotion(doc)
+  const chevron = pill.querySelector('.chevron')
+  if (motion) {
+    panel.animate([{ clipPath: pillClip(panel, pill) }, { clipPath: OPEN_CLIP }], {
+      duration: OPEN_MS,
+      easing: EASE,
+    })
+    list.animate(
+      [
+        { opacity: 0, transform: 'translateY(8px)' },
+        { opacity: 1, transform: 'none' },
+      ],
+      { duration: 220, delay: 110, easing: EASE, fill: 'backwards' },
+    )
+    chevron?.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(180deg)' }], {
+      duration: OPEN_MS,
+      easing: EASE,
+    })
+  }
 
   focusable(panel)[0]?.focus()
   doc.addEventListener('keydown', onKeyDown, true)
@@ -162,10 +205,46 @@ export function openLauncher(
     }
   }
 
+  let closed = false
+
   function close(): void {
+    if (closed) return
+    closed = true
     doc.removeEventListener('keydown', onKeyDown, true)
-    panel.remove()
+
+    if (!motion) {
+      finish()
+      return
+    }
+    // Fold back into the pill, then hand over to the button underneath.
+    panel.style.pointerEvents = 'none'
+    list.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' })
+    chevron?.animate([{ transform: 'rotate(180deg)' }, { transform: 'rotate(0deg)' }], {
+      duration: CLOSE_MS,
+      easing: EASE,
+      fill: 'forwards',
+    })
+    panel
+      .animate([{ clipPath: OPEN_CLIP }, { clipPath: pillClip(panel, pill) }], {
+        duration: CLOSE_MS,
+        easing: EASE,
+        fill: 'forwards',
+      })
+      .finished.then(finish, finish)
+    // A browser can hold animations back, in a background tab for one. The
+    // panel still has to go, so this does not wait on the animation alone.
+    setTimeout(finish, CLOSE_MS + 100)
+  }
+
+  let finished = false
+
+  function finish(): void {
+    if (finished) return
+    finished = true
+    frame.remove()
     style.remove()
+    // Before focus goes back, so the owner can show whatever it hid.
+    options.onClose()
     if (returnFocus instanceof HTMLElement) returnFocus.focus()
   }
 
@@ -177,22 +256,41 @@ export function openLauncher(
   return { close }
 }
 
-function header(doc: Document, label: string, onClose: () => void): HTMLElement {
-  const element = doc.createElement('header')
+/**
+ * Whether to animate. Not when the user asked for less motion, and not
+ * where the Web Animations API is missing, which also keeps tests in jsdom
+ * synchronous.
+ */
+function allowsMotion(doc: Document): boolean {
+  const view = doc.defaultView
+  if (!view || !('animate' in doc.documentElement)) return false
+  if (!('matchMedia' in view)) return true
+  return !view.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
 
-  const title = doc.createElement('h2')
-  title.textContent = label
-  title.title = label
+/** A clip showing only the pill in the bottom-right corner. */
+function pillClip(panel: HTMLElement, pill: HTMLElement): string {
+  const width = Math.min(pill.getBoundingClientRect().width, panel.getBoundingClientRect().width)
+  return `inset(calc(100% - ${PILL_HEIGHT}px) 0 0 calc(100% - ${width}px) round ${PILL_HEIGHT / 2}px)`
+}
 
-  const close = doc.createElement('button')
-  close.type = 'button'
-  close.className = 'close'
-  close.textContent = '×'
-  close.setAttribute('aria-label', 'Close')
-  close.addEventListener('click', onClose)
+function toggleBar(
+  doc: Document,
+  label: string,
+  onClose: () => void,
+): { bar: HTMLElement; pill: HTMLElement } {
+  const bar = doc.createElement('button')
+  bar.type = 'button'
+  bar.className = 'bar'
+  bar.setAttribute('aria-expanded', 'true')
+  bar.addEventListener('click', onClose)
 
-  element.append(title, close)
-  return element
+  const pill = doc.createElement('span')
+  pill.className = 'pill'
+  fillPill(pill, label)
+  bar.appendChild(pill)
+
+  return { bar, pill }
 }
 
 function body(

@@ -2,7 +2,7 @@ import type { Flow } from '@wendmark/core'
 import { afterEach, describe, expect, it } from 'vitest'
 import { OVERLAY_TAG } from './overlay/overlay'
 import { setRect } from './test-utils'
-import { start, stop } from './index'
+import { closeLauncher, openLauncher, start, stop } from './index'
 
 const flow: Flow = {
   schemaVersion: 1,
@@ -79,5 +79,20 @@ describe('the snippet API', () => {
     start(flow, { onEnd: () => (ended += 1) })
     stop()
     expect(ended).toBe(1)
+  })
+
+  it('opens the launcher again after the user closes it themselves', async () => {
+    const dialog = () =>
+      [...document.querySelectorAll(OVERLAY_TAG)]
+        .map((host) => host.shadowRoot?.querySelector('[role="dialog"]'))
+        .find(Boolean)
+
+    await openLauncher()
+    dialog()?.querySelector<HTMLButtonElement>('.bar')?.click()
+    expect(dialog()).toBeUndefined()
+
+    await openLauncher()
+    expect(dialog()).toBeDefined()
+    closeLauncher()
   })
 })

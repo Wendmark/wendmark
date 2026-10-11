@@ -257,9 +257,13 @@ export async function openLauncher(): Promise<void> {
     unfinishedId: progress?.flowId ?? null,
     completedIds: loadCompleted(safeLocalStorage()),
     onChoose: (flowId) => {
+      void start(flowId)
+    },
+    // However it closed. The panel's own close button and Escape never
+    // pass through here, so this is the one place that undoes the hiding.
+    onClose: () => {
       launcherPanel = null
       opener?.setHidden(false)
-      void start(flowId)
     },
   })
 }
@@ -267,8 +271,6 @@ export async function openLauncher(): Promise<void> {
 /** Closes the launcher, if it is open. */
 export function closeLauncher(): void {
   launcherPanel?.close()
-  launcherPanel = null
-  opener?.setHidden(false)
 }
 
 /**
