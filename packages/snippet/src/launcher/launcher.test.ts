@@ -16,6 +16,7 @@ function open(flows: FlowSummary[], options: Partial<Parameters<typeof openLaunc
     unfinishedId: null,
     completedIds: [],
     onChoose: () => {},
+    onClose: () => {},
     ...options,
   })
   return { root: overlay.root, launcher }
@@ -51,8 +52,26 @@ describe('the launcher', () => {
   it('calls itself whatever the app called it', () => {
     const { root } = open([flow('a', 'Order coffee')], { label: 'Guides' })
 
-    expect(root.querySelector('h2')?.textContent).toBe('Guides')
+    expect(root.querySelector('.bar .label')?.textContent).toBe('Guides')
     expect(root.querySelector('[role="dialog"]')?.getAttribute('aria-label')).toBe('Guides')
+  })
+
+  it('keeps the button inside it: the mark, the label and a chevron, as a bar that says it is open', () => {
+    const { root } = open([flow('a', 'Order coffee')], { label: 'Guides' })
+    const bar = root.querySelector('.bar')
+
+    expect(bar?.getAttribute('aria-expanded')).toBe('true')
+    expect(
+      [...(bar?.querySelector('.pill')?.children ?? [])].map((c) => c.getAttribute('class')),
+    ).toEqual(['mark', 'label', 'chevron'])
+  })
+
+  it('lists the processes first and puts the bar last, where the button was', () => {
+    const { root } = open([flow('a', 'Order coffee')])
+    const sheet = root.querySelector('.sheet')
+
+    expect(sheet?.firstElementChild?.className).toBe('list')
+    expect(sheet?.lastElementChild?.className).toBe('bar')
   })
 
   it('separates this page from the rest of the app', () => {
@@ -98,11 +117,23 @@ describe('the launcher', () => {
     expect(root.querySelector('[role="dialog"]')).toBeNull()
   })
 
-  it('closes from its own close button', () => {
+  it('closes from its bar, the button it grew out of', () => {
     const { root } = open([flow('a', 'Order coffee')])
 
-    root.querySelector<HTMLButtonElement>('.close')?.click()
+    root.querySelector<HTMLButtonElement>('.bar')?.click()
     expect(root.querySelector('[role="dialog"]')).toBeNull()
+  })
+
+  it('tells the app it closed, from its bar or Escape', () => {
+    const closed = vi.fn()
+    const first = open([flow('a', 'Order coffee')], { onClose: closed })
+    first.root.querySelector<HTMLButtonElement>('.bar')?.click()
+    expect(closed).toHaveBeenCalledOnce()
+
+    overlay?.destroy()
+    open([flow('a', 'Order coffee')], { onClose: closed })
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect(closed).toHaveBeenCalledTimes(2)
   })
 
   it('stops listening for keys once closed', () => {
