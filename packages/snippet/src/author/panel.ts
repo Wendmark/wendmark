@@ -110,7 +110,12 @@ const PANEL_CSS = `
   }
   [data-wendmark="recorder"] .steps {
     flex: 1;
+    /* Without this a flex child will not shrink below its content, and the
+       list pushes the panel past its max-height instead of scrolling. */
+    min-height: 0;
     overflow-y: auto;
+    /* Reaching the end of the steps does not start scrolling the page. */
+    overscroll-behavior: contain;
     padding: 8px;
     margin: 0;
     list-style: none;
@@ -398,6 +403,7 @@ export function createRecorderPanel(
     collapse.textContent = collapsed ? '+' : '–'
     collapse.setAttribute('aria-expanded', String(!collapsed))
     collapse.setAttribute('aria-label', collapsed ? 'Expand the recorder' : 'Collapse the recorder')
+    keepOnScreen()
   })
 
   // ---- dragging, so the panel never has to be in the way ----
@@ -448,11 +454,14 @@ export function createRecorderPanel(
     view?.addEventListener('pointerup', onUp)
   })
 
-  place(startPosition())
-  view?.addEventListener('resize', () => {
+  /** Re-applies the limits where the panel is now, after its size changed. */
+  function keepOnScreen(): void {
     const rect = panel.getBoundingClientRect()
     place({ left: rect.left, top: rect.top })
-  })
+  }
+
+  place(startPosition())
+  view?.addEventListener('resize', keepOnScreen)
 
   return {
     render: (state: PanelState) => {
@@ -474,8 +483,11 @@ export function createRecorderPanel(
       state.draft.steps.forEach((step, index) => {
         list.appendChild(renderStep(step, index, count))
       })
+      // Each recorded step makes it taller. Don't let it grow off the bottom.
+      keepOnScreen()
     },
     destroy: () => {
+      view?.removeEventListener('resize', keepOnScreen)
       panel.remove()
       style.remove()
     },

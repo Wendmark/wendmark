@@ -9,6 +9,9 @@
 /** Keep at least this much of the panel on screen, so it can always be grabbed. */
 const MIN_VISIBLE = 80
 
+/** Space kept between the panel and the bottom of the window. */
+const EDGE = 16
+
 /** Where the panel sits, in viewport pixels from the top left. */
 export interface Position {
   left: number
@@ -20,10 +23,17 @@ export interface Box {
   height: number
 }
 
-/** Keeps a position on screen, however the window is resized or dragged. */
+/**
+ * Keeps a position on screen, however the window is resized or dragged.
+ *
+ * Sideways it may be pushed mostly out of the way, as long as a strip stays
+ * grabbable. Up and down it stays whole: the steps scroll inside it and Save
+ * sits at the bottom, so a panel hanging off the bottom of the window is one
+ * whose end can't be reached.
+ */
 export function clampPosition(position: Position, panel: Box, viewport: Box): Position {
   const maxLeft = Math.max(viewport.width - MIN_VISIBLE, 0)
-  const maxTop = Math.max(viewport.height - MIN_VISIBLE, 0)
+  const maxTop = Math.max(viewport.height - panel.height - EDGE, 0)
   return {
     left: Math.min(Math.max(position.left, MIN_VISIBLE - panel.width), maxLeft),
     top: Math.min(Math.max(position.top, 0), maxTop),
