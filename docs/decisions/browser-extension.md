@@ -131,7 +131,7 @@ reports where it is.
 
 This is new work, and the first build proves it before anything else, on a
 fixture any contributor can run: a page in the demo app that embeds a panel
-served from a second local address (#89).
+served from a second local address ([#89](https://github.com/Wendmark/wendmark/issues/89)).
 
 ## Where Wendmark works
 
@@ -206,6 +206,6 @@ downloaded on every page load.
 - How steps are matched to pages in applications that route with `#`. Page
   hints already follow routes written as `#/orders`, but not `#home`,
   `#!/orders` or `#view/…`, which in those applications _is_ the page
-  (#98).
+  ([#98](https://github.com/Wendmark/wendmark/issues/98)).
 - Whether to reach into other companies' widgets at all.
 - Firefox and Safari, after Chrome.
