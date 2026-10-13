@@ -918,9 +918,16 @@ button.destructive {
   font-size: 0.8rem;
 }
 
+.report-step {
+  min-width: 0;
+}
+
+/* Selectors can be long and have no spaces; wrap them inside the card. */
 .report-step .code {
   margin: 0.4rem 0 0;
   font-size: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .report-delete {
