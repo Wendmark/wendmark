@@ -1,5 +1,10 @@
-/** The custom element Wendmark's guidance UI lives in. */
-export const OVERLAY_TAG = 'wendmark-overlay'
+import { WENDMARK_HOST_TAG } from '@wendmark/dom'
+
+/**
+ * The custom element Wendmark's guidance UI lives in. Defined in the element
+ * engine, which must never search inside it.
+ */
+export const OVERLAY_TAG = WENDMARK_HOST_TAG
 
 /** Above every sane z-index, so guidance is never hidden by the page. */
 const TOP_LAYER = '2147483647'

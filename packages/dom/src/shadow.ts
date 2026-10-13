@@ -12,6 +12,14 @@
 /** How many roots deep to look, so a pathological page cannot hang us. */
 const MAX_DEPTH = 10
 
+/**
+ * The element Wendmark's own UI lives in. Its shadow root is ours, never
+ * the app's: the guide's bar repeats the step ("2/4 · Click Change plan"),
+ * the launcher lists process names, and none of that may ever be mistaken
+ * for the thing on the page a step points at.
+ */
+export const WENDMARK_HOST_TAG = 'wendmark-overlay'
+
 /** The element above this one, stepping out of a shadow root when needed. */
 export function parentAcrossShadow(element: Element): Element | null {
   if (element.parentElement) return element.parentElement
@@ -42,7 +50,9 @@ export function queryAllDeep(root: ParentNode, selector: string, depth = 0): Ele
 
   for (const element of root.querySelectorAll('*')) {
     const shadow = element.shadowRoot
-    if (shadow) found.push(...queryAllDeep(shadow, selector, depth + 1))
+    if (shadow && element.localName !== WENDMARK_HOST_TAG) {
+      found.push(...queryAllDeep(shadow, selector, depth + 1))
+    }
   }
   return found
 }

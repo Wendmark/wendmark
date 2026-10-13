@@ -104,4 +104,21 @@ describe('resolve', () => {
     if (result.status !== 'found') throw new Error('expected a match')
     expect(result.score).toBeGreaterThanOrEqual(9)
   })
+
+  it("never picks something inside Wendmark's own UI, even when its name fits", () => {
+    // The guide's own bar is a button whose name repeats the step:
+    // "2/4 · Click Change plan". Between pages, before the app has drawn
+    // its real button, that bar must not be mistaken for it.
+    document.body.innerHTML = '<main></main>'
+    const host = document.createElement('wendmark-overlay')
+    document.body.appendChild(host)
+    const root = host.attachShadow({ mode: 'open' })
+    root.innerHTML = '<button type="button">2/4 · Click Change plan</button>'
+
+    const resolution = resolve(
+      { selectors: ['#nope'], role: 'button', name: 'Change plan' },
+      document,
+    )
+    expect(resolution.status).toBe('not-found')
+  })
 })
