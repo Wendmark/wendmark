@@ -11,6 +11,7 @@ export { getAccessibleName } from './name'
 export { getRole } from './role'
 export { isInRepeatedStructure } from './repeated'
 export { resolve, type Resolution } from './resolve'
+export { WENDMARK_HOST_TAG } from './shadow'
 export { pagePath, prettyPath, urlMatches } from './url'
 export { isProbablyVisible } from './visible'
 
