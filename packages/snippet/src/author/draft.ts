@@ -28,6 +28,11 @@ export function addStep(draft: Draft, step: Step): Draft {
   return { ...draft, steps: renumber([...draft.steps, step]) }
 }
 
+/** Swaps the last step for a better one: a click on a field, then filling it in. */
+export function replaceLastStep(draft: Draft, step: Step): Draft {
+  return { ...draft, steps: renumber([...draft.steps.slice(0, -1), step]) }
+}
+
 /** Removes a step: a misclick, or something the user should not be told. */
 export function removeStep(draft: Draft, id: string): Draft {
   return { ...draft, steps: renumber(draft.steps.filter((step) => step.id !== id)) }
