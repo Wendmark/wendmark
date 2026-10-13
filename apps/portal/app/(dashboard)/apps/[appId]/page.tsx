@@ -4,6 +4,7 @@ import { getApp, listUnknownOrigins } from '../../../../lib/apps/service'
 import { requireUser } from '../../../../lib/auth/session'
 import { can } from '../../../../lib/permissions'
 import { listFlows } from '../../../../lib/flows/service'
+import { countReports } from '../../../../lib/reports/read'
 import { Processes } from './processes'
 import { RecordButton } from './record-button'
 import { UnknownOrigins } from './unknown-origins'
@@ -18,15 +19,23 @@ export default async function AppPage({ params }: { params: Promise<{ appId: str
 
   const unknownOrigins = await listUnknownOrigins(ctx, app.id)
   const flows = await listFlows(ctx, app.id)
+  const reports = can(user.role, 'report:read') ? await countReports(ctx, app.id) : null
   const snippetTag = `<script src="http://localhost:3100/snippet.js" data-app="${app.publicKey}"></script>`
 
   return (
     <section>
       <div className="row">
         <h1>{app.name}</h1>
-        <Link href={`/apps/${app.id}/settings`} className="button secondary">
-          Settings
-        </Link>
+        <div className="header-links">
+          {reports !== null ? (
+            <Link href={`/apps/${app.id}/reports`} className="button secondary">
+              Reports{reports > 0 ? <span className="count">{reports}</span> : null}
+            </Link>
+          ) : null}
+          <Link href={`/apps/${app.id}/settings`} className="button secondary">
+            Settings
+          </Link>
+        </div>
       </div>
 
       {/* Installing is a one-off. Once the snippet has been seen, the tag
