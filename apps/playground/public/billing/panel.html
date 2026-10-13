@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ledgerly billing</title>
+    <!--
+      A test fixture, not part of Fika's own interface.
+
+      Stands in for a billing provider's portal that an app embeds in an
+      iframe. Fika's Billing page loads it from the *other* local host name
+      (localhost vs 127.0.0.1), so it is a cross-origin frame: code in Fika's
+      page cannot reach inside it. That is the case the browser extension has
+      to handle; see docs/decisions/browser-extension.md and issue #89.
+
+      Plain HTML on purpose, with no build step and no Wendmark snippet: a
+      real provider's page would have neither.
+    -->
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 20px;
+        font:
+          14px/1.5 system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        color: #1c2733;
+        background: #f6f8fb;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        color: #2d5bff;
+      }
+      .brand span {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: #2d5bff;
+        display: inline-block;
+      }
+      [role='tablist'] {
+        display: flex;
+        gap: 4px;
+        margin: 16px 0 12px;
+        border-bottom: 1px solid #dfe5ee;
+      }
+      [role='tab'] {
+        font: inherit;
+        font-weight: 600;
+        padding: 8px 12px;
+        border: 0;
+        background: none;
+        color: #5b6b7d;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+      }
+      [role='tab'][aria-selected='true'] {
+        color: #2d5bff;
+        border-bottom-color: #2d5bff;
+      }
+      [role='tabpanel'][hidden] {
+        display: none;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid #dfe5ee;
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px 6px;
+        border-bottom: 1px solid #eef1f6;
+      }
+      th {
+        font-size: 12px;
+        color: #5b6b7d;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      button.download {
+        font: inherit;
+        font-size: 13px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1px solid #2d5bff;
+        background: #fff;
+        color: #2d5bff;
+        cursor: pointer;
+      }
+      button.download:hover {
+        background: #2d5bff;
+        color: #fff;
+      }
+      [role='status'] {
+        margin: 12px 0 0;
+        color: #1d7a46;
+        font-weight: 600;
+        min-height: 1.5em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand"><span aria-hidden="true"></span> Ledgerly</div>
+
+    <div role="tablist" aria-label="Billing">
+      <button role="tab" id="tab-overview" aria-controls="overview" aria-selected="true">
+        Overview
+      </button>
+      <button role="tab" id="tab-invoices" aria-controls="invoices" aria-selected="false">
+        Invoices
+      </button>
+    </div>
+
+    <section role="tabpanel" id="overview" aria-labelledby="tab-overview" class="card">
+      <p><strong>Two bags / month</strong> · 279 kr, billed on the 1st</p>
+      <p>Paid with a card ending 4242.</p>
+    </section>
+
+    <section role="tabpanel" id="invoices" aria-labelledby="tab-invoices" class="card" hidden>
+      <table>
+        <thead>
+          <tr>
+            <th>Invoice</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th><span hidden>Download</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>INV-2026-10</td>
+            <td>1 Oct 2026</td>
+            <td>279 kr</td>
+            <td><button class="download" data-invoice="INV-2026-10">Download</button></td>
+          </tr>
+          <tr>
+            <td>INV-2026-09</td>
+            <td>1 Sep 2026</td>
+            <td>279 kr</td>
+            <td><button class="download" data-invoice="INV-2026-09">Download</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <p role="status" id="status"></p>
+    </section>
+
+    <script>
+      for (const tab of document.querySelectorAll('[role="tab"]')) {
+        tab.addEventListener('click', () => {
+          for (const other of document.querySelectorAll('[role="tab"]')) {
+            const selected = other === tab
+            other.setAttribute('aria-selected', String(selected))
+            document.getElementById(other.getAttribute('aria-controls')).hidden = !selected
+          }
+        })
+      }
+      for (const button of document.querySelectorAll('button.download')) {
+        button.addEventListener('click', () => {
+          document.getElementById('status').textContent =
+            'Downloaded ' + button.dataset.invoice + '.pdf'
+        })
+      }
+    </script>
+  </body>
+</html>

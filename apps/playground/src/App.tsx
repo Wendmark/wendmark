@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { CartProvider, useCart } from './cart'
 import { CartDrawer } from './components/CartDrawer'
 import { findCoffee } from './data'
+import { BillingPage } from './pages/BillingPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { CoffeePage } from './pages/CoffeePage'
 import { OrdersPage } from './pages/OrdersPage'
@@ -15,6 +16,7 @@ const navLinks = [
   { path: '/', label: 'Shop' },
   { path: '/subscription', label: 'Subscription' },
   { path: '/orders', label: 'Orders' },
+  { path: '/billing', label: 'Billing' },
   { path: '/tastings', label: 'My tastings' },
   { path: '/profile', label: 'Profile' },
 ]
@@ -60,6 +62,7 @@ function route(pathname: string, onAdded: (message: string) => void): ReactNode 
   if (pathname === '/tastings') return <TastingsPage />
   if (pathname === '/profile') return <ProfilePage />
   if (pathname === '/checkout') return <CheckoutPage />
+  if (pathname === '/billing') return <BillingPage />
 
   const coffeeMatch = /^\/coffee\/([\w-]+)$/.exec(pathname)
   const coffee = coffeeMatch?.[1] ? findCoffee(coffeeMatch[1]) : undefined
