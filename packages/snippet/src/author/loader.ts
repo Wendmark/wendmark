@@ -13,6 +13,11 @@ export interface SnippetApi {
   startFlow: (flow: Flow, options?: { onEnd?: () => void }) => void
   stopFlow: () => void
   startRecording: (options: RecordingOptions) => Recording
+  /**
+   * Keeps the launcher out of the recorder's way. Optional: a snippet from
+   * before it existed simply leaves the launcher where it is.
+   */
+  setLauncherHidden?: (hidden: boolean) => void
 }
 
 /**

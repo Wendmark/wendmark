@@ -30,6 +30,8 @@ export function start(context: AuthorContext): void {
   const { doc, view } = context
 
   const overlay = createOverlay(doc)
+  // The launcher would sit in the same corner. Out of the way while recording.
+  context.api.setLauncherHidden?.(true)
   let draft: Draft = emptyDraft('Untitled process')
   let paused = false
   let saving = false
@@ -135,6 +137,7 @@ export function start(context: AuthorContext): void {
     recording.stop()
     panel.destroy()
     overlay.destroy()
+    context.api.setLauncherHidden?.(false)
   }
 
   render()

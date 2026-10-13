@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { rememberedPosition } from '../overlay/anchor'
 import { createOverlay, type Overlay } from '../overlay/overlay'
 import type { FlowSummary } from '../portal/client'
 import { openLauncher } from './launcher'
@@ -17,6 +18,8 @@ function open(flows: FlowSummary[], options: Partial<Parameters<typeof openLaunc
     completedIds: [],
     onChoose: () => {},
     onClose: () => {},
+    position: rememberedPosition(undefined, 'unused'),
+    from: null,
     ...options,
   })
   return { root: overlay.root, launcher }
@@ -178,5 +181,24 @@ describe('the launcher', () => {
 
     expect(host.style.pointerEvents).toBe('none')
     expect(getComputedStyle(root.querySelector('.sheet') as Element).pointerEvents).toBe('auto')
+  })
+
+  it('moves with its bar, and shares where it is with the button', () => {
+    const position = rememberedPosition(undefined, 'unused')
+    const { root } = open([flow('a', 'Order coffee')], { position })
+    const bar = root.querySelector<HTMLButtonElement>('.bar')
+    const frame = root.querySelector<HTMLElement>('.frame')
+    const pointer = (type: string, x: number, y: number) =>
+      new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true })
+
+    bar?.dispatchEvent(pointer('pointerdown', 900, 700))
+    bar?.dispatchEvent(pointer('pointermove', 850, 650))
+    bar?.dispatchEvent(pointer('pointerup', 850, 650))
+    bar?.click()
+
+    expect(frame?.style.right).toBe('66px')
+    expect(position.get()).toEqual({ right: 66, bottom: 66 })
+    // A drag is not a press: the panel stays open.
+    expect(root.querySelector('[role="dialog"]')).not.toBeNull()
   })
 })

@@ -51,12 +51,40 @@ export const PILL_CSS = `
   }
   .mark, .chevron { flex: none; display: block; }
   .chevron { opacity: 0.85; }
+  /* The recorder's pill: a light that says clicks are being captured. */
+  .rec-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff4d4f;
+    animation: wendmark-rec 1.4s ease-in-out infinite;
+  }
+  .rec-dot.is-paused { background: #b0a9c0; animation: none; }
+  @keyframes wendmark-rec {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rec-dot { animation: none; }
+  }
 `
 
-/** Fills an element with the mark, the app's label and the chevron. */
-export function fillPill(element: HTMLElement, label: string): void {
-  element.innerHTML = `${MARK_SVG}<span class="label"></span>${CHEVRON_SVG}`
+/**
+ * Fills an element with the mark, the label and the chevron, plus a
+ * recording light when asked. Returns the label, for whoever needs to
+ * change it later.
+ */
+export function fillPill(
+  element: HTMLElement,
+  label: string,
+  options: { recording?: boolean } = {},
+): HTMLElement {
+  const dot = options.recording ? '<span class="rec-dot"></span>' : ''
+  element.innerHTML = `${MARK_SVG}${dot}<span class="label"></span>${CHEVRON_SVG}`
   // textContent, never innerHTML: the label is the app's data, not markup.
-  const text = element.querySelector('.label')
-  if (text) text.textContent = label
+  const text = element.querySelector<HTMLElement>('.label')
+  if (!text) throw new Error('pill markup has no label')
+  text.textContent = label
+  return text
 }
