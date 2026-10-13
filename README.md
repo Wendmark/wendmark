@@ -149,6 +149,12 @@ Wendmark adds nothing to your interface unless you ask. The launcher button is
 **off by default**; call `Wendmark.openLauncher()` from your own help menu, or
 turn it on in the portal and name it whatever suits your product.
 
+**Problem reports** are off by default too. Turned on in the portal, the
+launcher offers "Report a problem": the person redoes what went wrong, sees the
+exact list of steps that will be sent (masked, and each one removable), says
+what happened, and sends it. Call `Wendmark.reportProblem({ userRef })` to
+offer it from your own help menu instead.
+
 ## Self-hosting
 
 ```bash

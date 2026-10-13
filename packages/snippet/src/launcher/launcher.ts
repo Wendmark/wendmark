@@ -78,6 +78,23 @@ const CSS = `
   .item .meta { display: block; color: #6b6779; font-size: 12px; margin-top: 2px; }
   .item.resume { border-color: #0e5c57; }
   .empty { margin: 4px 0 2px; color: #6b6779; }
+  .report {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 14px -2px 0;
+    padding-top: 10px;
+    border-top: 1px solid #ece7e1;
+    color: #6b6779;
+    font-size: 13px;
+  }
+  .report button {
+    padding: 4px 8px;
+    color: #9c3c13;
+    font-weight: 600;
+  }
+  .report button:hover { background: #fbeee6; }
   .done { color: #1e7a3c; }
 
   /* The bar is the pill, stretched to the panel's width. Its contents stay
@@ -119,6 +136,11 @@ export interface LauncherOptions {
   position: Position
   /** The button it grows out of, if there is one on screen. */
   from: DOMRect | null
+  /**
+   * Offered when the app lets its users report a problem. The launcher
+   * closes itself first, so the report starts with the page in view.
+   */
+  onReport?: () => void
 }
 
 /** A stand-in size for layout-free environments (tests). */
@@ -165,6 +187,7 @@ export function openLauncher(
 
   const list = body(doc, sections, options, choose)
   list.className = 'list'
+  if (options.onReport) list.appendChild(reportEntry(doc, report))
   const { bar, pill } = toggleBar(doc, options.label, close)
   panel.append(list, bar)
   frame.appendChild(panel)
@@ -294,6 +317,11 @@ export function openLauncher(
     options.onChoose(flowId)
   }
 
+  function report(): void {
+    close()
+    options.onReport?.()
+  }
+
   return { close }
 }
 
@@ -346,6 +374,20 @@ function body(
   }
 
   return wrapper
+}
+
+/** "Something not working? Report a problem", at the foot of the list. */
+function reportEntry(doc: Document, onReport: () => void): HTMLElement {
+  const row = doc.createElement('p')
+  row.className = 'report'
+  const ask = doc.createElement('span')
+  ask.textContent = 'Something not working?'
+  const button = doc.createElement('button')
+  button.type = 'button'
+  button.textContent = 'Report a problem'
+  button.addEventListener('click', onReport)
+  row.append(ask, button)
+  return row
 }
 
 function heading(doc: Document, text: string): HTMLElement {

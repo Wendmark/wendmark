@@ -21,6 +21,7 @@ import { rememberedPosition, type Position } from './overlay/anchor'
 import { openLauncher as openLauncherPanel, type Launcher } from './launcher/launcher'
 import { createOpenerButton, type OpenerButton } from './launcher/button'
 import { loadCompleted, markCompleted } from './launcher/state'
+import { startProblemReport, type ProblemReport } from './report/report'
 
 export type { Flow }
 export type { FlowSummary } from './portal/client'
@@ -228,7 +229,7 @@ let opener: OpenerButton | null = null
  * Why the launcher is out of the way, if it is. While a guide runs or
  * someone records, their own panel sits in the launcher's corner.
  */
-const launcherHiddenFor = new Set<'recording' | 'guiding'>()
+const launcherHiddenFor = new Set<'recording' | 'guiding' | 'reporting'>()
 
 /** Where the launcher sits, shared by its button and its panel. */
 let launcherPositionCache: Position | null = null
@@ -258,7 +259,9 @@ export async function openLauncher(): Promise<void> {
   const portal = portalOrigin(document)
   const key = appKey(document)
   const config =
-    portal && key ? await fetchConfig(portal, key, window) : { flows: [], launcher: launcherState }
+    portal && key
+      ? await fetchConfig(portal, key, window)
+      : { flows: [], launcher: launcherState, reports: { enabled: false, labels: 'none' as const } }
 
   const flows = config.flows
   const progress = loadProgress(safeSessionStorage())
@@ -284,6 +287,46 @@ export async function openLauncher(): Promise<void> {
     },
     position: launcherPosition(),
     from,
+    // Offered only where the app has switched reports on.
+    ...(config.reports.enabled ? { onReport: () => void reportProblem() } : {}),
+  })
+}
+
+/** At most one problem report open at a time. */
+let currentReport: ProblemReport | null = null
+
+/**
+ * Lets the person report a problem: they redo what went wrong, say what
+ * happened, and it goes to the portal. The launcher offers this itself when
+ * the app has reports on; an app can also call it from its own help menu.
+ *
+ * `userRef` is an identifier the app already knows, so whoever reads the
+ * report can reply. Sent exactly as given, never looked inside.
+ *
+ * Does nothing unless the app has switched reports on in the portal.
+ */
+export async function reportProblem(options: { userRef?: string } = {}): Promise<void> {
+  if (currentReport) return
+  const portal = portalOrigin(document)
+  const key = appKey(document)
+  if (!portal || !key) return
+
+  const config = await fetchConfig(portal, key, window)
+  if (!config.reports.enabled || currentReport) return
+
+  // Their own path, uninterrupted: a guide in progress waits, kept.
+  stop({ keepProgress: true })
+  hideLauncherFor('reporting', true)
+  currentReport = startProblemReport({
+    portalOrigin: portal,
+    appKey: key,
+    labels: config.reports.labels,
+    snippetVersion: version,
+    ...(options.userRef ? { userRef: options.userRef } : {}),
+    onEnd: () => {
+      currentReport = null
+      hideLauncherFor('reporting', false)
+    },
   })
 }
 
@@ -323,7 +366,7 @@ async function mountLauncherIfEnabled(): Promise<void> {
 }
 
 /** Hides the launcher for a reason, and brings it back once none is left. */
-function hideLauncherFor(reason: 'recording' | 'guiding', hidden: boolean): void {
+function hideLauncherFor(reason: 'recording' | 'guiding' | 'reporting', hidden: boolean): void {
   if (hidden) launcherHiddenFor.add(reason)
   else launcherHiddenFor.delete(reason)
   const out = launcherHiddenFor.size > 0

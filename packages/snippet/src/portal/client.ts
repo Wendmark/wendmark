@@ -1,5 +1,6 @@
-import type { Flow } from '@wendmark/core'
+import type { Flow, Step } from '@wendmark/core'
 import { SCHEMA_VERSION } from '@wendmark/core/guard'
+import { readLabelPolicy, type LabelPolicy } from '@wendmark/core/redact'
 
 /**
  * Asking the portal what this app has published.
@@ -22,6 +23,11 @@ export interface FlowSummary {
 export interface PortalConfig {
   flows: FlowSummary[]
   launcher: { enabled: boolean; label: string }
+  /**
+   * Whether this app lets its users report a problem, and how much of what
+   * the page says a report may keep. Off unless the portal says on.
+   */
+  reports: { enabled: boolean; labels: LabelPolicy }
 }
 
 /** What the launcher is called when an app has not said otherwise. */
@@ -30,6 +36,7 @@ export const DEFAULT_LAUNCHER_LABEL = 'How do I…'
 const EMPTY: PortalConfig = {
   flows: [],
   launcher: { enabled: false, label: DEFAULT_LAUNCHER_LABEL },
+  reports: { enabled: false, labels: readLabelPolicy(undefined) },
 }
 
 /** A page load should not wait longer than this for guidance to be offered. */
@@ -84,12 +91,19 @@ function readConfig(value: unknown): PortalConfig {
 
   const launcher = isRecord(value.launcher) ? value.launcher : {}
   const label = typeof launcher.label === 'string' ? launcher.label.trim() : ''
+  // An older portal does not mention reports: then there are none to offer.
+  const reports = isRecord(value.reports) ? value.reports : {}
 
   return {
     flows,
     launcher: {
       enabled: launcher.enabled === true,
       label: label === '' ? DEFAULT_LAUNCHER_LABEL : label,
+    },
+    reports: {
+      enabled: reports.enabled === true,
+      // Anything unexpected reads as the cautious policy.
+      labels: readLabelPolicy(reports.labels),
     },
   }
 }
@@ -131,4 +145,54 @@ export async function fetchFlow(
 
   const body = await get(url, view)
   return body === null ? null : (body as Flow)
+}
+
+/** The report format this snippet writes. Matches REPORT_VERSION in core. */
+export const REPORT_VERSION = 1
+
+/** A report as the snippet sends it: see ReportSchema in @wendmark/core. */
+export interface OutgoingReport {
+  reportVersion: typeof REPORT_VERSION
+  note: string
+  steps: Step[]
+  pages: string[]
+  labels: LabelPolicy
+  userAgent?: string
+  snippetVersion?: string
+  userRef?: string
+}
+
+/**
+ * Sends a problem report. True once the portal has it.
+ *
+ * The portal answers every report the same way, whatever it decides to do
+ * with it, so "sent" here means it arrived, not that it was stored. False
+ * only when it never got there, so the person can try again.
+ */
+export async function sendReport(
+  portalOrigin: string,
+  key: string,
+  report: OutgoingReport,
+  view: Window,
+): Promise<boolean> {
+  const controller = new AbortController()
+  const timer = view.setTimeout(() => {
+    controller.abort()
+  }, TIMEOUT_MS * 2)
+
+  try {
+    const response = await fetch(`${portalOrigin}/api/v1/reports?key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(report),
+      signal: controller.signal,
+    })
+    return response.status < 500
+  } catch {
+    return false
+  } finally {
+    view.clearTimeout(timer)
+  }
 }
