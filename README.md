@@ -22,7 +22,7 @@ glides to the next thing to click, a panel shows where they are, and **the
 person clicks it themselves**.
 
 <p align="center">
-  <img src="docs/images/guiding.png" alt="A demo coffee shop with a Wendmark cursor pointing at the Profile link, a tooltip reading “Open your Profile”, and a panel listing all three steps of the process" width="820">
+  <img src="docs/images/guiding.gif" alt="A visitor to the Fika demo shop opens Show me how, picks Change your plan, and is guided through it: a teaching cursor glides to each thing to click, a panel lists the four steps, and the visitor clicks each one themselves until the plan is changed" width="820">
 </p>
 
 ## Why another one of these
@@ -78,7 +78,13 @@ does **not** protect.
    `Wendmark.start(id)`.
 
 <p align="center">
-  <img src="docs/images/editing.png" alt="The Wendmark portal showing a three-step process called “Change your grind”, each step with controls to reword it, mark it as the user’s own data, reorder it or remove it" width="820">
+  <img src="docs/images/recording.gif" alt="Recording in the Fika demo app: the person clicks Subscription, Change plan, Four bags a month and Save plan, and the dark recorder panel in the corner fills with four steps; they name the process Change your plan and save it as a draft" width="820">
+  <br><sub>Recording: every click becomes a step.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/editing.gif" alt="The Wendmark portal showing the recorded process Change your plan: two steps are reworded and the process is published" width="820">
+  <br><sub>Editing: reword the steps, then publish.</sub>
 </p>
 
 ## Status
