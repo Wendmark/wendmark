@@ -19,6 +19,11 @@ Font License 1.1.
 ## Files
 
 - `wendmark-horizontal(-reversed).svg`: primary lockup.
+- `wendmark-horizontal-tile.svg`: the primary lockup on a chalk (`#f6f4ef`)
+  tile, for places that may show it on a light or a dark background without
+  telling you which, such as a GitHub README. A `<picture>` switching on
+  `prefers-color-scheme` follows the reader's computer, not GitHub's theme,
+  and can put the white lockup on a white page.
 - `wendmark-stacked(-reversed).svg`: mark above the wordmark.
 - `wendmark-mark(-reversed).svg`: the mark alone, square.
 - `wendmark-app-icon.svg`: reversed mark on a rounded teal tile.
@@ -26,7 +31,7 @@ Font License 1.1.
   their own mask (iOS, maskable PWA icons).
 - `png/`: `favicon.ico` (16, 32, 48), `favicon-*.png`,
   `apple-touch-icon.png` (180), `icon-192.png`, `icon-512.png`,
-  `icon-maskable-512.png`, and @2x PNGs of each lockup.
+  `icon-maskable-512.png`, and @2x PNGs of each lockup (including the tile).
 
 Keep clear space around the logo of at least the trail's height, and don't
 recolour, stretch, or add effects to the mark.

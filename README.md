@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/logo/png/wendmark-horizontal-reversed@2x.png">
-    <img src="docs/brand/logo/png/wendmark-horizontal@2x.png" alt="Wendmark" width="300">
-  </picture>
+  <img src="docs/brand/logo/png/wendmark-horizontal-tile@2x.png" alt="Wendmark" width="340">
 </p>
 
 <p align="center">
