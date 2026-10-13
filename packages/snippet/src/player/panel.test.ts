@@ -19,7 +19,18 @@ beforeEach(() => {
 afterEach(() => {
   overlay.destroy()
   document.body.innerHTML = ''
+  localStorage.clear()
 })
+
+function pointer(type: string, x: number, y: number): PointerEvent {
+  return new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true })
+}
+
+function el<T extends Element>(selector: string): T {
+  const found = overlay.root.querySelector<T>(selector)
+  if (!found) throw new Error(`no ${selector}`)
+  return found
+}
 
 function panelElement(): HTMLElement | null {
   return overlay.root.querySelector('[data-wendmark="panel"]')
@@ -153,5 +164,57 @@ describe('createPanel', () => {
     panel.show({ stepNumber: 1, total: 1, steps: ['Read this'], primary: 'Got it' })
     button('primary').click()
     expect(onPrimary).toHaveBeenCalledTimes(1)
+  })
+
+  it('can be closed with its ✕, which stops the guide', () => {
+    panel.show({ stepNumber: 1, total: 2, steps: ['Open the cart', 'Pay'] })
+    expect(button('stop').getAttribute('aria-label')).toBe('Stop this guide')
+    button('stop').click()
+    expect(onStop).toHaveBeenCalledOnce()
+  })
+
+  it('folds into a pill that still says which step the user is on', () => {
+    panel.show({ stepNumber: 2, total: 3, steps: ['Open the cart', 'Pick a coffee', 'Pay'] })
+    const bar = el<HTMLButtonElement>('.wm-bar')
+
+    expect(el('.wm-bar .label').textContent).toBe('2/3 · Pick a coffee')
+    expect([...el('.wm-bar .pill').children].map((c) => c.getAttribute('class'))).toEqual([
+      'mark',
+      'label',
+      'chevron',
+    ])
+
+    bar.click()
+    expect(panelElement()?.classList.contains('is-folded')).toBe(true)
+    expect(bar.getAttribute('aria-expanded')).toBe('false')
+
+    // Guidance carries on while folded: the pill follows along.
+    panel.show({ stepNumber: 3, total: 3, steps: ['Open the cart', 'Pick a coffee', 'Pay'] })
+    expect(el('.wm-bar .label').textContent).toBe('3/3 · Pay')
+
+    bar.click()
+    expect(panelElement()?.classList.contains('is-folded')).toBe(false)
+  })
+
+  it('starts in the bottom-right corner, and can be dragged by its header', () => {
+    panel.show({ stepNumber: 1, total: 2, steps: ['Open the cart', 'Pay'] })
+    const frame = el<HTMLElement>('.wm-frame')
+    expect(frame.style.right).toBe('16px')
+
+    const header = el<HTMLElement>('[data-wendmark="panel"] header')
+    header.dispatchEvent(pointer('pointerdown', 900, 500))
+    header.dispatchEvent(pointer('pointermove', 700, 400))
+    header.dispatchEvent(pointer('pointerup', 700, 400))
+
+    expect(frame.style.right).toBe('216px')
+    expect(frame.style.bottom).toBe('116px')
+    expect(localStorage.getItem('wendmark:guide-position')).not.toBeNull()
+  })
+
+  it('is not dragged when its buttons are pressed', () => {
+    panel.show({ stepNumber: 1, total: 2, steps: ['Open the cart', 'Pay'] })
+    button('stop').dispatchEvent(pointer('pointerdown', 900, 500))
+    el('[data-wendmark="panel"] header').dispatchEvent(pointer('pointermove', 700, 400))
+    expect(el<HTMLElement>('.wm-frame').style.right).toBe('16px')
   })
 })

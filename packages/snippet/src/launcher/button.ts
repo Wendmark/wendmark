@@ -1,3 +1,13 @@
+import {
+  clampAnchor,
+  dragAnchor,
+  placeAt,
+  sizeOf,
+  viewportOf,
+  type Anchor,
+  type Position,
+} from '../overlay/anchor'
+import { makeDraggable } from '../overlay/drag'
 import { fillPill, PILL_CSS } from './pill'
 
 /**
@@ -12,9 +22,8 @@ const CSS = `
   ${PILL_CSS}
   .opener {
     position: fixed;
-    right: 16px;
-    bottom: 16px;
     pointer-events: auto;
+    touch-action: none;
     max-width: calc(100vw - 32px);
     background: #0e5c57;
     border: none;
@@ -36,19 +45,27 @@ const CSS = `
     .opener:hover .chevron { transform: none; }
   }
   .opener:focus-visible { outline: 2px solid #1f1d2b; outline-offset: 2px; }
+  /* While it is being dragged it follows the pointer, and nothing else. */
+  .opener.is-dragging { cursor: grabbing; transform: none; transition: none; }
 `
 
 export interface OpenerButton {
   destroy: () => void
   /** Hidden while the launcher itself is open, so they cannot overlap. */
   setHidden: (hidden: boolean) => void
+  /** Where it is on screen, so the panel can grow out of exactly this spot. */
+  rect: () => DOMRect
 }
+
+/** A stand-in size for layout-free environments (tests). */
+const FALLBACK_SIZE = { width: 160, height: 40 }
 
 export function createOpenerButton(
   root: ShadowRoot,
   doc: Document,
   label: string,
   onOpen: () => void,
+  position: Position,
 ): OpenerButton {
   const style = doc.createElement('style')
   style.textContent = CSS
@@ -63,14 +80,48 @@ export function createOpenerButton(
   button.addEventListener('click', onOpen)
   root.appendChild(button)
 
+  /** Puts it where it was left, kept wholly on screen. */
+  function place(): void {
+    const anchor = clampAnchor(position.get(), sizeOf(button, FALLBACK_SIZE), viewportOf(doc))
+    position.set(anchor)
+    placeAt(button, anchor)
+  }
+
+  // It can be dragged out of the way of whatever it covers. A short press
+  // is still a click and opens the launcher.
+  let start: Anchor = position.get()
+  const undoDrag = makeDraggable(button, {
+    onStart: () => {
+      start = position.get()
+      button.classList.add('is-dragging')
+    },
+    onMove: (dx, dy) => {
+      position.set(dragAnchor(start, dx, dy))
+      place()
+    },
+    onEnd: () => {
+      button.classList.remove('is-dragging')
+      position.save()
+    },
+  })
+
+  const view = doc.defaultView
+  view?.addEventListener('resize', place)
+  place()
+
   return {
     destroy: () => {
+      undoDrag()
+      view?.removeEventListener('resize', place)
       button.remove()
       style.remove()
     },
     setHidden: (hidden: boolean) => {
       button.style.display = hidden ? 'none' : ''
       button.setAttribute('aria-expanded', hidden ? 'true' : 'false')
+      // The panel may have been moved while this was hidden.
+      if (!hidden) place()
     },
+    rect: () => button.getBoundingClientRect(),
   }
 }

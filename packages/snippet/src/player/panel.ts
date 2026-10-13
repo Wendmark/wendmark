@@ -1,21 +1,21 @@
+import { createShell, SHELL_CSS } from '../overlay/shell'
+
 const PANEL_CSS = `
-  [data-wendmark="panel"] {
-    position: fixed;
-    left: 16px;
-    bottom: 16px;
-    width: 300px;
-    max-width: calc(100vw - 32px);
-    padding: 14px 16px;
-    border-radius: 14px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 14px 40px rgba(8, 51, 47, 0.2);
-    color: #2a2833;
-    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* The one part of the overlay the user may click. */
-    pointer-events: auto;
+  ${SHELL_CSS}
+  [data-wendmark="panel"] header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 10px 0 16px;
+  }
+  [data-wendmark="panel"] .body {
+    padding: 0 16px 14px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
   [data-wendmark="progress"] {
+    flex: 1;
     font-size: 11px;
     font-weight: 600;
     color: #0e5c57;
@@ -94,6 +94,12 @@ const PANEL_CSS = `
     background: rgba(0, 0, 0, 0.05);
     color: #2a2833;
   }
+  [data-wendmark="panel"] button[data-wendmark="stop"] {
+    border: none;
+    font-size: 13px;
+    padding: 3px 8px;
+    color: #8f8c9c;
+  }
 `
 
 /** What the panel shows about the process being followed. */
@@ -134,12 +140,36 @@ export function createPanel(root: ShadowRoot, doc: Document, options: PanelOptio
   style.textContent = PANEL_CSS
   root.appendChild(style)
 
-  const panel = doc.createElement('div')
-  panel.dataset.wendmark = 'panel'
+  // Movable, foldable into a pill that still says which step this is, and
+  // closable: being guided should never get in the way of the page.
+  const shell = createShell(root, doc, {
+    kind: 'panel',
+    name: 'Guide',
+    width: 300,
+    positionKey: 'wendmark:guide-position',
+    tone: 'teal',
+    fallback: { width: 300, height: 260 },
+  })
+  const panel = shell.sheet
   panel.style.display = 'none'
+
+  const header = doc.createElement('header')
 
   const progress = doc.createElement('div')
   progress.dataset.wendmark = 'progress'
+
+  const stop = doc.createElement('button')
+  stop.dataset.wendmark = 'stop'
+  stop.type = 'button'
+  stop.textContent = '✕'
+  stop.setAttribute('aria-label', 'Stop this guide')
+  stop.addEventListener('click', () => options.onStop())
+
+  header.append(progress, stop)
+  shell.addHandle(header, (target) => target.closest('button') !== null)
+
+  const body = doc.createElement('div')
+  body.className = 'body'
 
   const steps = doc.createElement('ol')
   steps.dataset.wendmark = 'steps'
@@ -162,15 +192,12 @@ export function createPanel(root: ShadowRoot, doc: Document, options: PanelOptio
   skip.textContent = 'Skip'
   skip.addEventListener('click', () => options.onSkip())
 
-  const stop = doc.createElement('button')
-  stop.dataset.wendmark = 'stop'
-  stop.type = 'button'
-  stop.textContent = 'Stop'
-  stop.addEventListener('click', () => options.onStop())
+  actions.append(primary, skip)
+  body.append(steps, status, actions)
+  panel.insertBefore(header, shell.bar)
+  panel.insertBefore(body, shell.bar)
 
-  actions.append(primary, skip, stop)
-  panel.append(progress, steps, status, actions)
-  root.appendChild(panel)
+  let shown = false
 
   /** Draws the list, with everything before the current step marked done. */
   function render(state: PanelState): void {
@@ -208,6 +235,9 @@ export function createPanel(root: ShadowRoot, doc: Document, options: PanelOptio
   return {
     show: (state: PanelState) => {
       progress.textContent = `${state.stepNumber} / ${state.total}`
+      // Folded, the pill alone still says where the user is.
+      const current = state.steps[state.stepNumber - 1] ?? ''
+      shell.setLabel(`${state.stepNumber}/${state.total} · ${current}`)
       render(state)
       status.textContent = ''
       if (state.primary) {
@@ -216,7 +246,11 @@ export function createPanel(root: ShadowRoot, doc: Document, options: PanelOptio
       } else {
         primary.style.display = 'none'
       }
-      panel.style.display = 'block'
+      panel.style.display = 'flex'
+      shell.keepOnScreen()
+      // It grows out of its pill the first time it appears.
+      if (!shown) shell.grow()
+      shown = true
     },
     setStatus: (text: string) => {
       status.textContent = text
@@ -225,7 +259,7 @@ export function createPanel(root: ShadowRoot, doc: Document, options: PanelOptio
       panel.style.display = 'none'
     },
     destroy: () => {
-      panel.remove()
+      shell.destroy()
       style.remove()
     },
   }

@@ -1,13 +1,7 @@
 import type { Step } from '@wendmark/core'
 import type { Draft } from './draft'
 import { isInputStep } from './draft'
-import {
-  clampPosition,
-  defaultPosition,
-  loadPosition,
-  savePosition,
-  type Position,
-} from './panel-position'
+import { createShell, SHELL_CSS } from '../overlay/shell'
 
 /**
  * The recorder panel: the one piece of Wendmark a product owner really
@@ -21,39 +15,18 @@ import {
  */
 
 const PANEL_CSS = `
-  [data-wendmark="recorder"] {
-    position: fixed;
-    top: 16px;
-    left: 16px;
-    width: 320px;
-    max-height: calc(100vh - 32px);
-    display: flex;
-    flex-direction: column;
-    border-radius: 14px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    background: rgba(255, 255, 255, 0.97);
-    box-shadow: 0 14px 40px rgba(30, 25, 70, 0.22);
-    color: #2a2833;
-    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    pointer-events: auto;
-  }
+  ${SHELL_CSS}
   [data-wendmark="recorder"] header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 14px;
+    gap: 6px;
+    padding: 10px 10px 10px 12px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.07);
-    cursor: grab;
-    user-select: none;
-    touch-action: none;
-  }
-  [data-wendmark="recorder"] header:active {
-    cursor: grabbing;
   }
   [data-wendmark="recorder"] header button {
     font: inherit;
-    font-size: 12px;
-    padding: 2px 7px;
+    font-size: 13px;
+    padding: 3px 8px;
     border: none;
     border-radius: 6px;
     background: transparent;
@@ -63,33 +36,6 @@ const PANEL_CSS = `
   [data-wendmark="recorder"] header button:hover {
     background: rgba(0, 0, 0, 0.06);
     color: #2a2833;
-  }
-  [data-wendmark="recorder"].is-collapsed .steps,
-  [data-wendmark="recorder"].is-collapsed .empty,
-  [data-wendmark="recorder"].is-collapsed .message,
-  [data-wendmark="recorder"].is-collapsed footer {
-    display: none !important;
-  }
-  [data-wendmark="recorder"].is-collapsed {
-    width: 260px;
-  }
-  [data-wendmark="recorder"] .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #e5484d;
-    animation: wendmark-recording 1.4s ease-in-out infinite;
-  }
-  [data-wendmark="recorder"].is-paused .dot {
-    background: #b0a9c0;
-    animation: none;
-  }
-  @keyframes wendmark-recording {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.35; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    [data-wendmark="recorder"] .dot { animation: none; }
   }
   [data-wendmark="recorder"] input[data-wendmark="flow-name"] {
     flex: 1;
@@ -224,6 +170,39 @@ const PANEL_CSS = `
     font-size: 12px;
     color: #6b6779;
   }
+
+  /* Asked before throwing a recording away. */
+  [data-wendmark="recorder"] .confirm {
+    position: absolute;
+    inset: 0 0 40px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.97);
+  }
+  [data-wendmark="recorder"] .confirm[hidden] { display: none; }
+  [data-wendmark="recorder"] .confirm strong { font-size: 15px; }
+  [data-wendmark="recorder"] .confirm p { margin: 0 0 6px; color: #6b6779; }
+  [data-wendmark="recorder"] .confirm div { display: flex; gap: 8px; }
+  [data-wendmark="recorder"] .confirm button {
+    font: inherit;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    background: #fff;
+    color: #2a2833;
+    cursor: pointer;
+  }
+  [data-wendmark="recorder"] .confirm button.danger {
+    border-color: transparent;
+    background: #c62828;
+    color: #fff;
+    font-weight: 600;
+  }
 `
 
 /** What the panel asks the rest of author mode to do. */
@@ -259,6 +238,17 @@ function describeKind(step: Step): string {
   return step.dynamic ? 'clicks one of several' : 'clicks'
 }
 
+/** Where the recorder sits, remembered per site in this browser. */
+const POSITION_KEY = 'wendmark:recorder-position'
+
+/** What the bar says: whether clicks are being captured, and how many so far. */
+function statusLabel(state: PanelState): string {
+  if (state.saving) return 'Saving…'
+  const count = state.draft.steps.length
+  const steps = `${count} ${count === 1 ? 'step' : 'steps'}`
+  return `${state.paused ? 'Paused' : 'Recording'} · ${steps}`
+}
+
 /** Creates the recorder panel inside the overlay's shadow root. */
 export function createRecorderPanel(
   root: ShadowRoot,
@@ -269,33 +259,33 @@ export function createRecorderPanel(
   style.textContent = PANEL_CSS
   root.appendChild(style)
 
-  const panel = doc.createElement('div')
-  panel.dataset.wendmark = 'recorder'
+  // Dark, with a recording light, so it is never mistaken for a guide.
+  const shell = createShell(root, doc, {
+    kind: 'recorder',
+    name: 'Wendmark recorder',
+    width: 320,
+    positionKey: POSITION_KEY,
+    tone: 'dark',
+    recording: true,
+    fallback: { width: 320, height: 420 },
+  })
+  const panel = shell.sheet
 
-  // ---- header: recording light, editable name, close ----
+  // ---- header: editable name, discard. Also the drag handle. ----
   const header = doc.createElement('header')
-  const dot = doc.createElement('span')
-  dot.className = 'dot'
 
   const name = doc.createElement('input')
   name.dataset.wendmark = 'flow-name'
   name.setAttribute('aria-label', 'Name of this process')
   name.addEventListener('change', () => handlers.onRename(name.value))
 
-  // Collapse, for when the panel covers the thing you need to click.
-  const collapse = doc.createElement('button')
-  collapse.type = 'button'
-  collapse.textContent = '–'
-  collapse.setAttribute('aria-label', 'Collapse the recorder')
-  collapse.setAttribute('aria-expanded', 'true')
-
   const close = doc.createElement('button')
   close.type = 'button'
+  close.className = 'discard'
   close.textContent = '✕'
-  close.setAttribute('aria-label', 'Stop recording and discard')
-  close.addEventListener('click', () => handlers.onCancel())
+  close.setAttribute('aria-label', 'Discard this recording')
 
-  header.append(dot, name, collapse, close)
+  header.append(name, close)
 
   // ---- the steps ----
   const list = doc.createElement('ul')
@@ -331,8 +321,48 @@ export function createRecorderPanel(
   save.addEventListener('click', () => handlers.onSave())
 
   footer.append(pause, note, test, save)
-  panel.append(header, list, empty, message, footer)
-  root.appendChild(panel)
+
+  // ---- asking before a recording is thrown away ----
+  const confirm = doc.createElement('div')
+  confirm.className = 'confirm'
+  confirm.setAttribute('role', 'alertdialog')
+  confirm.hidden = true
+  const confirmTitle = doc.createElement('strong')
+  const confirmText = doc.createElement('p')
+  confirmText.textContent = "This can't be undone."
+  const confirmButtons = doc.createElement('div')
+  const keep = doc.createElement('button')
+  keep.type = 'button'
+  keep.className = 'keep'
+  keep.textContent = 'Keep recording'
+  const discard = doc.createElement('button')
+  discard.type = 'button'
+  discard.className = 'danger'
+  discard.textContent = 'Discard'
+  confirmButtons.append(keep, discard)
+  confirm.append(confirmTitle, confirmText, confirmButtons)
+  confirm.setAttribute('aria-label', 'Discard this recording?')
+
+  for (const part of [header, list, empty, message, footer, confirm]) {
+    panel.insertBefore(part, shell.bar)
+  }
+
+  let stepCount = 0
+
+  close.addEventListener('click', () => {
+    // Nothing to lose yet: no need to ask.
+    if (stepCount === 0) {
+      handlers.onCancel()
+      return
+    }
+    confirmTitle.textContent = `Discard ${stepCount} recorded ${stepCount === 1 ? 'step' : 'steps'}?`
+    confirm.hidden = false
+    keep.focus()
+  })
+  keep.addEventListener('click', () => {
+    confirm.hidden = true
+  })
+  discard.addEventListener('click', () => handlers.onCancel())
 
   /** One row per step, rebuilt whenever the draft changes. */
   function renderStep(step: Step, index: number, total: number): HTMLLIElement {
@@ -395,79 +425,21 @@ export function createRecorderPanel(
     return row
   }
 
-  // ---- collapsing ----
-  let collapsed = false
-  collapse.addEventListener('click', () => {
-    collapsed = !collapsed
-    panel.classList.toggle('is-collapsed', collapsed)
-    collapse.textContent = collapsed ? '+' : '–'
-    collapse.setAttribute('aria-expanded', String(!collapsed))
-    collapse.setAttribute('aria-label', collapsed ? 'Expand the recorder' : 'Collapse the recorder')
-    keepOnScreen()
-  })
-
-  // ---- dragging, so the panel never has to be in the way ----
-  const view = doc.defaultView
-  const storage = (() => {
-    try {
-      return view?.localStorage
-    } catch {
-      return undefined
-    }
-  })()
-
-  function place(position: Position): void {
-    const viewport = { width: view?.innerWidth ?? 1024, height: view?.innerHeight ?? 768 }
-    const size = { width: panel.offsetWidth || 320, height: panel.offsetHeight || 400 }
-    const safe = clampPosition(position, size, viewport)
-    panel.style.left = `${safe.left}px`
-    panel.style.top = `${safe.top}px`
-  }
-
-  function startPosition(): Position {
-    const viewport = { width: view?.innerWidth ?? 1024, height: view?.innerHeight ?? 768 }
-    const size = { width: panel.offsetWidth || 320, height: panel.offsetHeight || 400 }
-    return loadPosition(storage) ?? defaultPosition(size, viewport)
-  }
-
-  header.addEventListener('pointerdown', (event: PointerEvent) => {
-    // The name field and the buttons in the header are not drag handles.
-    if (event.target !== header && event.target !== dot) return
-    event.preventDefault()
-
-    const rect = panel.getBoundingClientRect()
-    const grabX = event.clientX - rect.left
-    const grabY = event.clientY - rect.top
-
-    function onMove(move: PointerEvent): void {
-      place({ left: move.clientX - grabX, top: move.clientY - grabY })
-    }
-
-    function onUp(): void {
-      view?.removeEventListener('pointermove', onMove)
-      view?.removeEventListener('pointerup', onUp)
-      const moved = panel.getBoundingClientRect()
-      savePosition(storage, { left: moved.left, top: moved.top })
-    }
-
-    view?.addEventListener('pointermove', onMove)
-    view?.addEventListener('pointerup', onUp)
-  })
-
-  /** Re-applies the limits where the panel is now, after its size changed. */
-  function keepOnScreen(): void {
-    const rect = panel.getBoundingClientRect()
-    place({ left: rect.left, top: rect.top })
-  }
-
-  place(startPosition())
-  view?.addEventListener('resize', keepOnScreen)
+  // The header drags the panel too, except its name field and button.
+  shell.addHandle(header, (target) => target.closest('input, button') !== null)
+  // It grows out of its pill when recording starts, like the launcher does.
+  shell.grow()
 
   return {
     render: (state: PanelState) => {
+      stepCount = state.draft.steps.length
+      shell.setLabel(statusLabel(state))
+      shell.pill
+        .querySelector('.rec-dot')
+        ?.classList.toggle('is-paused', state.paused || state.saving)
+
       if (doc.activeElement !== name) name.value = state.draft.name
 
-      panel.classList.toggle('is-paused', state.paused)
       pause.textContent = state.paused ? 'Resume' : 'Pause'
 
       const count = state.draft.steps.length
@@ -483,12 +455,11 @@ export function createRecorderPanel(
       state.draft.steps.forEach((step, index) => {
         list.appendChild(renderStep(step, index, count))
       })
-      // Each recorded step makes it taller. Don't let it grow off the bottom.
-      keepOnScreen()
+      // Each recorded step makes it taller. Don't let it grow off the screen.
+      shell.keepOnScreen()
     },
     destroy: () => {
-      view?.removeEventListener('resize', keepOnScreen)
-      panel.remove()
+      shell.destroy()
       style.remove()
     },
   }

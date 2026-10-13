@@ -10,13 +10,14 @@ import type { Flow } from '@wendmark/core'
 // Imported from its own entry point: pulling it from the package root would
 // bundle zod (about 95 KB gzipped) into the snippet.
 import { checkFlow, looksLikeFlow } from '@wendmark/core/guard'
-import { startFlow, type Player } from './player/player'
+import { startFlow, type Player, type PlayerOptions } from './player/player'
 import { clearProgress, loadProgress } from './player/progress'
 import { startAuthorModeIfAsked } from './author/start'
 import { appKey, portalOrigin, sendInstallPing } from './install/ping'
 import { startRecording, type Recording, type RecordingOptions } from './recorder/recorder'
 import { DEFAULT_LAUNCHER_LABEL, fetchConfig, fetchFlow, type FlowSummary } from './portal/client'
 import { createOverlay } from './overlay/overlay'
+import { rememberedPosition, type Position } from './overlay/anchor'
 import { openLauncher as openLauncherPanel, type Launcher } from './launcher/launcher'
 import { createOpenerButton, type OpenerButton } from './launcher/button'
 import { loadCompleted, markCompleted } from './launcher/state'
@@ -42,6 +43,7 @@ void startAuthorModeIfAsked(document, window, {
   startFlow: start,
   stopFlow: stop,
   startRecording,
+  setLauncherHidden,
 })
 
 // Someone who was halfway through a process before this page loaded should
@@ -134,7 +136,7 @@ function startNow(flow: Flow, options: { onEnd?: () => void } = {}): Player {
   }
 
   stop()
-  current = startFlow(flow, {
+  current = play(flow, {
     onFinish: () => {
       current = null
       markCompleted(safeLocalStorage(), flow.id)
@@ -174,7 +176,7 @@ export function resume(flows: Flow | Flow[]): Player | null {
   }
 
   stop()
-  current = startFlow(flow, {
+  current = play(flow, {
     startIndex: progress.stepIndex,
     onFinish: () => {
       current = null
@@ -222,6 +224,19 @@ let launcherOverlay: { root: ShadowRoot; destroy: () => void } | null = null
 let launcherPanel: Launcher | null = null
 let opener: OpenerButton | null = null
 
+/**
+ * Why the launcher is out of the way, if it is. While a guide runs or
+ * someone records, their own panel sits in the launcher's corner.
+ */
+const launcherHiddenFor = new Set<'recording' | 'guiding'>()
+
+/** Where the launcher sits, shared by its button and its panel. */
+let launcherPositionCache: Position | null = null
+function launcherPosition(): Position {
+  launcherPositionCache ??= rememberedPosition(safeLocalStorage(), 'wendmark:launcher-position')
+  return launcherPositionCache
+}
+
 /** The page's local storage, or undefined where the browser refuses it. */
 function safeLocalStorage(): Storage | undefined {
   try {
@@ -250,6 +265,8 @@ export async function openLauncher(): Promise<void> {
 
   const overlay = launcherOverlay ?? createOverlay(document)
   launcherOverlay = overlay
+  // Measured before it hides, so the panel grows out of exactly this spot.
+  const from = opener?.rect() ?? null
   opener?.setHidden(true)
 
   launcherPanel = openLauncherPanel(overlay.root, document, flows, {
@@ -263,8 +280,10 @@ export async function openLauncher(): Promise<void> {
     // pass through here, so this is the one place that undoes the hiding.
     onClose: () => {
       launcherPanel = null
-      opener?.setHidden(false)
+      if (launcherHiddenFor.size === 0) opener?.setHidden(false)
     },
+    position: launcherPosition(),
+    from,
   })
 }
 
@@ -290,8 +309,46 @@ async function mountLauncherIfEnabled(): Promise<void> {
 
   const overlay = launcherOverlay ?? createOverlay(document)
   launcherOverlay = overlay
-  opener = createOpenerButton(overlay.root, document, config.launcher.label, () => {
-    void openLauncher()
+  opener = createOpenerButton(
+    overlay.root,
+    document,
+    config.launcher.label,
+    () => {
+      void openLauncher()
+    },
+    launcherPosition(),
+  )
+  // A guide or a recording may have started while the config was on its way.
+  if (launcherHiddenFor.size > 0) opener.setHidden(true)
+}
+
+/** Hides the launcher for a reason, and brings it back once none is left. */
+function hideLauncherFor(reason: 'recording' | 'guiding', hidden: boolean): void {
+  if (hidden) launcherHiddenFor.add(reason)
+  else launcherHiddenFor.delete(reason)
+  const out = launcherHiddenFor.size > 0
+  if (out) closeLauncher()
+  opener?.setHidden(out || launcherPanel !== null)
+}
+
+/** For the recorder, which lives in its own bundle. */
+function setLauncherHidden(hidden: boolean): void {
+  hideLauncherFor('recording', hidden)
+}
+
+/** Starts the player, keeping the launcher out of its way while it runs. */
+function play(flow: Flow, options: PlayerOptions): Player {
+  hideLauncherFor('guiding', true)
+  return startFlow(flow, {
+    ...options,
+    onFinish: () => {
+      hideLauncherFor('guiding', false)
+      options.onFinish?.()
+    },
+    onStop: () => {
+      hideLauncherFor('guiding', false)
+      options.onStop?.()
+    },
   })
 }
 

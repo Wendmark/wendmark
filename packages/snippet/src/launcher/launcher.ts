@@ -1,3 +1,14 @@
+import {
+  clampAnchor,
+  dragAnchor,
+  placeAt,
+  sizeOf,
+  viewportOf,
+  type Anchor,
+  type Position,
+} from '../overlay/anchor'
+import { makeDraggable } from '../overlay/drag'
+import { allowsMotion, clipTo, EASE, FOLD_MS, GROW_MS, OPEN_CLIP } from '../overlay/morph'
 import type { FlowSummary } from '../portal/client'
 import { fillPill, PILL_CSS, PILL_HEIGHT } from './pill'
 import { isEmpty, sectionFlows, type LauncherSections } from './state'
@@ -14,19 +25,12 @@ import { isEmpty, sectionFlows, type LauncherSections } from './state'
  * folds it back down.
  */
 
-const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)'
-const OPEN_MS = 320
-const CLOSE_MS = 240
-const OPEN_CLIP = 'inset(0 0 0 0 round 16px)'
-
 const CSS = `
   ${PILL_CSS}
   /* The shadow sits on a wrapper as a filter, so it follows the clipped
      shape while it grows. A box-shadow would be clipped away with it. */
   .frame {
     position: fixed;
-    right: 16px;
-    bottom: 16px;
     width: min(340px, calc(100vw - 32px));
     filter: drop-shadow(0 12px 28px rgba(20, 18, 40, 0.2));
   }
@@ -88,8 +92,10 @@ const CSS = `
     border-radius: 0;
     background: #0e5c57;
     transition: background-color 160ms ease;
+    touch-action: none;
   }
   .bar:hover { background: #0a4642; }
+  .bar.is-dragging { cursor: grabbing; }
   .bar:focus-visible { outline: 2px solid #fff; outline-offset: -4px; border-radius: 12px; }
   /* Pointing down now: pressing it folds the panel away. */
   .bar .chevron { transform: rotate(180deg); }
@@ -109,7 +115,14 @@ export interface LauncherOptions {
    * Called once the panel has folded away and left the page.
    */
   onClose: () => void
+  /** Where it sits. Shared with the button, so both move together. */
+  position: Position
+  /** The button it grows out of, if there is one on screen. */
+  from: DOMRect | null
 }
+
+/** A stand-in size for layout-free environments (tests). */
+const FALLBACK_SIZE = { width: 340, height: 300 }
 
 export interface Launcher {
   close: () => void
@@ -157,11 +170,35 @@ export function openLauncher(
   frame.appendChild(panel)
   root.appendChild(frame)
 
+  // Wholly on screen. If the button sat too high for the panel to open
+  // above it, the panel shifts down, and the button will come back there.
+  function place(anchor: Anchor): void {
+    const safe = clampAnchor(anchor, sizeOf(frame, FALLBACK_SIZE), viewportOf(doc))
+    options.position.set(safe)
+    placeAt(frame, safe)
+  }
+  place(options.position.get())
+
+  // Dragged by its bar. A short press still folds it away.
+  let dragStart: Anchor = options.position.get()
+  const undoDrag = makeDraggable(bar, {
+    onStart: () => {
+      dragStart = options.position.get()
+      bar.classList.add('is-dragging')
+    },
+    onMove: (dx, dy) => place(dragAnchor(dragStart, dx, dy)),
+    onEnd: () => {
+      bar.classList.remove('is-dragging')
+      options.position.save()
+    },
+  })
+
   const motion = allowsMotion(doc)
   const chevron = pill.querySelector('.chevron')
   if (motion) {
-    panel.animate([{ clipPath: pillClip(panel, pill) }, { clipPath: OPEN_CLIP }], {
-      duration: OPEN_MS,
+    const from = options.from ?? pill.getBoundingClientRect()
+    panel.animate([{ clipPath: clipTo(panel, from) }, { clipPath: OPEN_CLIP }], {
+      duration: GROW_MS,
       easing: EASE,
     })
     list.animate(
@@ -172,7 +209,7 @@ export function openLauncher(
       { duration: 220, delay: 110, easing: EASE, fill: 'backwards' },
     )
     chevron?.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(180deg)' }], {
-      duration: OPEN_MS,
+      duration: GROW_MS,
       easing: EASE,
     })
   }
@@ -211,6 +248,7 @@ export function openLauncher(
     if (closed) return
     closed = true
     doc.removeEventListener('keydown', onKeyDown, true)
+    undoDrag()
 
     if (!motion) {
       finish()
@@ -220,20 +258,23 @@ export function openLauncher(
     panel.style.pointerEvents = 'none'
     list.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' })
     chevron?.animate([{ transform: 'rotate(180deg)' }, { transform: 'rotate(0deg)' }], {
-      duration: CLOSE_MS,
+      duration: FOLD_MS,
       easing: EASE,
       fill: 'forwards',
     })
     panel
-      .animate([{ clipPath: OPEN_CLIP }, { clipPath: pillClip(panel, pill) }], {
-        duration: CLOSE_MS,
-        easing: EASE,
-        fill: 'forwards',
-      })
+      .animate(
+        [{ clipPath: OPEN_CLIP }, { clipPath: clipTo(panel, pill.getBoundingClientRect()) }],
+        {
+          duration: FOLD_MS,
+          easing: EASE,
+          fill: 'forwards',
+        },
+      )
       .finished.then(finish, finish)
     // A browser can hold animations back, in a background tab for one. The
     // panel still has to go, so this does not wait on the animation alone.
-    setTimeout(finish, CLOSE_MS + 100)
+    setTimeout(finish, FOLD_MS + 100)
   }
 
   let finished = false
@@ -254,24 +295,6 @@ export function openLauncher(
   }
 
   return { close }
-}
-
-/**
- * Whether to animate. Not when the user asked for less motion, and not
- * where the Web Animations API is missing, which also keeps tests in jsdom
- * synchronous.
- */
-function allowsMotion(doc: Document): boolean {
-  const view = doc.defaultView
-  if (!view || !('animate' in doc.documentElement)) return false
-  if (!('matchMedia' in view)) return true
-  return !view.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-/** A clip showing only the pill in the bottom-right corner. */
-function pillClip(panel: HTMLElement, pill: HTMLElement): string {
-  const width = Math.min(pill.getBoundingClientRect().width, panel.getBoundingClientRect().width)
-  return `inset(calc(100% - ${PILL_HEIGHT}px) 0 0 calc(100% - ${width}px) round ${PILL_HEIGHT / 2}px)`
 }
 
 function toggleBar(
