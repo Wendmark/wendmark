@@ -94,9 +94,7 @@ right screen and guidance resumes by itself.
 
 ## Where flows live today
 
-| Where                                   | What                                                     |
-| --------------------------------------- | -------------------------------------------------------- |
-| `apps/playground/src/wendmark/flows.ts` | Fika's demo flow, loaded by the "Guide me" button        |
-| Anywhere else                           | A `const` in a console session, or a JSON file you paste |
-
-Storage, an editor and publishing come with the portal, after the course.
+| Where         | What                                                     |
+| ------------- | -------------------------------------------------------- |
+| The portal    | Processes recorded from it, edited there, and published  |
+| Anywhere else | A `const` in a console session, or a JSON file you paste |

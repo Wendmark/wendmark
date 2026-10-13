@@ -24,6 +24,7 @@ export function usePathname(): string {
 export function navigate(to: string): void {
   if (to === window.location.pathname) return
   window.history.pushState(null, '', to)
+  window.scrollTo(0, 0)
   window.dispatchEvent(new Event(NAVIGATE_EVENT))
 }
 
