@@ -1299,3 +1299,16 @@ button {
     width: 160px;
   }
 }
+
+/* ---- billing: the provider's panel, embedded ---- */
+
+.billing-frame {
+  margin-top: 1.5rem;
+}
+
+.billing-frame iframe {
+  display: block;
+  width: 100%;
+  height: 360px;
+  border: 0;
+}
