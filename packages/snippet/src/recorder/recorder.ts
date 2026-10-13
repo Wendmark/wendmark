@@ -18,8 +18,13 @@ export interface RecordingOptions {
   doc?: Document
   view?: Window
   name?: string
-  /** Told about each step as it is recorded, for a live step list. */
-  onStep?: (step: ActionStep | InputStep) => void
+  /**
+   * Told about each step as it is recorded, for a live step list. When
+   * `replacesLast` is true the step takes the place of the one before it —
+   * a click on a field, superseded by filling it in — and the list should
+   * drop that one.
+   */
+  onStep?: (step: ActionStep | InputStep, change: { replacesLast: boolean }) => void
   /** Whether to ignore clicks for now, so setup does not become steps. */
   isPaused?: () => boolean
   /**
@@ -110,6 +115,24 @@ function isWorthRecording(element: Element): boolean {
   return element.matches('input, select, textarea, button, a[href]')
 }
 
+/** Fields a label toggles: clicking the label is the whole of the step. */
+function isCheckable(element: Element): boolean {
+  return (
+    element instanceof HTMLInputElement && (element.type === 'radio' || element.type === 'checkbox')
+  )
+}
+
+/**
+ * The label around (or containing) what was clicked, with the field it is
+ * for. A click on a label is forwarded by the browser to that field as a
+ * second click, and the field then changes: three events, one intention.
+ */
+function labelAround(clicked: Element): { label: HTMLLabelElement; field: Element } | null {
+  const label = clicked.closest('label')
+  const field = label?.control ?? null
+  return label && field ? { label, field } : null
+}
+
 /**
  * Two clicks on one control closer together than this are one intention.
  *
@@ -127,6 +150,8 @@ export function startRecording(options: RecordingOptions = {}): Recording {
   let lastElement: Element | null = null
   let lastClickAt = 0
   let recording = true
+  /** A field whose label was just recorded: its echoes are not new steps. */
+  let labelled: Element | null = null
 
   const showBadge = options.showBadge ?? true
   const overlay = showBadge ? createOverlay(doc) : null
@@ -144,23 +169,43 @@ export function startRecording(options: RecordingOptions = {}): Recording {
     // Never record the user using Wendmark's own controls.
     if (event.composedPath().some(isOurs)) return
 
-    const element = findInteractiveTarget(clicked)
-    if (!isWorthRecording(element)) return
+    // The click the browser forwards from a label to its field. The label
+    // was the step.
+    const now = Date.now()
+    if (clicked === labelled && now - lastClickAt < SAME_INTENT_MS) return
+
+    let element = findInteractiveTarget(clicked)
+    // How the step is worded: by what the field is, when it is a label's.
+    let wordedAs: Target['role'] | undefined
+    const around = labelAround(clicked)
+    if (around && isCheckable(around.field)) {
+      // A radio or tick box and its label are one control. Point at the
+      // label: it is what the person sees and clicks, and plenty of apps
+      // hide the real input behind it.
+      element = around.label
+      wordedAs = getRole(around.field) ?? undefined
+    } else if (around && clicked !== around.field && !around.field.contains(clicked)) {
+      // A label's text for any other field just moves the caret there. The
+      // forwarded click records the field itself.
+      return
+    } else if (!isWorthRecording(element)) {
+      return
+    }
 
     // A double click, or an impatient second press on a button that has not
     // responded yet, is one step. A later press of the same control is a
     // second step: a quantity stepper clicked three times means three, and
     // recording that as one leaves the person following it with one.
-    const now = Date.now()
     if (element === lastElement && now - lastClickAt < SAME_INTENT_MS) return
     lastElement = element
     lastClickAt = now
+    labelled = wordedAs !== undefined && around ? around.field : null
 
     const target: Target = { ...fingerprint(element), url: pagePath(view.location.href) }
     const step: ActionStep = {
       type: 'action',
       id: `s${steps.length + 1}`,
-      text: describe(target),
+      text: describe(wordedAs ? { ...target, role: wordedAs } : target),
       // A click on something in a list is a click on the author's own data,
       // and a step that goes looking for their row in somebody else's
       // account never finds it. Guessed, not decided: the panel shows the
@@ -169,7 +214,7 @@ export function startRecording(options: RecordingOptions = {}): Recording {
       target,
     }
     steps.push(step)
-    options.onStep?.(step)
+    options.onStep?.(step, { replacesLast: false })
   }
 
   /**
@@ -184,15 +229,21 @@ export function startRecording(options: RecordingOptions = {}): Recording {
     if (!changed) return
     if (event.composedPath().some(isOurs)) return
 
+    // A radio or tick box whose label was the step: changing is what the
+    // click on the label did, not something more to do.
+    if (changed === labelled) return
+
     const element = findInteractiveTarget(changed)
     if (!isWorthRecording(element)) return
 
     const target: Target = { ...fingerprint(element), url: pagePath(view.location.href) }
     const last = steps[steps.length - 1]
-    if (last && lastElement === element) steps.pop()
+    const replacesLast = last !== undefined && lastElement === element
+    if (replacesLast) steps.pop()
 
     lastElement = element
     lastClickAt = Date.now()
+    labelled = null
     const step: InputStep = {
       type: 'input',
       id: `s${steps.length + 1}`,
@@ -200,7 +251,7 @@ export function startRecording(options: RecordingOptions = {}): Recording {
       target,
     }
     steps.push(step)
-    options.onStep?.(step)
+    options.onStep?.(step, { replacesLast })
   }
 
   doc.addEventListener('click', onClick, { capture: true, passive: true })

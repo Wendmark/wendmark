@@ -13,6 +13,7 @@ import {
   moveStep,
   removeStep,
   renameDraft,
+  replaceLastStep,
   retitleStep,
   setDynamic,
   toFlow,
@@ -68,7 +69,10 @@ export function start(context: AuthorContext): void {
     // The panel has its own recording light; two would be noise.
     showBadge: false,
     isPaused: () => paused,
-    onStep: (step) => update(addStep(draft, step)),
+    // A field clicked and then filled in is one step: the second replaces
+    // the first, here as in the recorder.
+    onStep: (step, { replacesLast }) =>
+      update(replacesLast ? replaceLastStep(draft, step) : addStep(draft, step)),
   })
 
   function update(next: Draft): void {

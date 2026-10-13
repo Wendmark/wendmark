@@ -8,6 +8,7 @@ import {
   moveStep,
   removeStep,
   renameDraft,
+  replaceLastStep,
   retitleStep,
   setDynamic,
   toFlow,
@@ -124,5 +125,16 @@ describe('toFlow', () => {
   it('keeps the steps as recorded', () => {
     const steps: Step[] = toFlow(draftOf('Click Save'), 'draft-1').steps
     expect(steps[0]).toMatchObject({ type: 'action', text: 'Click Save' })
+  })
+})
+
+describe('replaceLastStep', () => {
+  it('swaps the last step for a better one, keeping the numbering tidy', () => {
+    const draft = replaceLastStep(
+      draftOf('Open the cart', 'Click the Email field'),
+      action('Enter your Email'),
+    )
+    expect(draft.steps.map((step) => step.text)).toEqual(['Open the cart', 'Enter your Email'])
+    expect(draft.steps.map((step) => step.id)).toEqual(['s1', 's2'])
   })
 })
