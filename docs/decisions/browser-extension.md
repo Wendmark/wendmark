@@ -98,6 +98,15 @@ which requests access to that one site at that moment. It never asks for
 "all websites". That keeps the Chrome Web Store review simple and the
 promise to users short.
 
+**Frames from other addresses need their own permission.** `activeTab`
+covers the address of the tab itself, not iframes inside it that come from
+somewhere else. So recording or playing on a page with such frames also asks
+for access to each frame's address, found at that moment from the frames the
+page actually has, and a guide stores its frames' addresses so a replay can
+ask for the same ones up front. Still one site at a time, still only when
+asked; never "all websites". Found in the frames spike
+([#89](https://github.com/Wendmark/wendmark/issues/89)).
+
 ## What carries over unchanged
 
 - **Wendmark guides. It never acts.** The extension clicks nothing, types
@@ -129,9 +138,22 @@ ordered list and remembers which frame each step belongs to, much as
 whether a step's target is inside it; the one that finds it rings it and
 reports where it is.
 
-This is new work, and the first build proves it before anything else, on a
-fixture any contributor can run: a page in the demo app that embeds a panel
-served from a second local address ([#89](https://github.com/Wendmark/wendmark/issues/89)).
+This was proven first, on a fixture any contributor can run: Fika's Billing
+page embeds a provider panel from its other local host name
+(`apps/playground/README.md`). The spike in
+[#89](https://github.com/Wendmark/wendmark/issues/89) recorded a process
+crossing into that frame and replayed it, with the recorder, resolver and
+player unchanged inside the frame. What it showed the build needs:
+
+- **One panel, in the top page.** Inside a frame only the ring and cursor
+  are drawn. A panel drawn inside a small frame covered the very button the
+  person had to press, which is guidance getting in the way.
+- **Keep looking while frames load,** as the player already does in one
+  page: a page change can mount the frame that holds the next step a moment
+  later.
+- **Inject into frames as they appear,** not once at the start.
+- **A frame's address in each step,** masked like a page path, to choose
+  between frames on replay and to ask for its permission.
 
 ## Where Wendmark works
 
