@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchConfig, fetchFlow } from './client'
+import { REPORT_VERSION as CORE_REPORT_VERSION } from '@wendmark/core'
+import { fetchConfig, fetchFlow, REPORT_VERSION, sendReport, type OutgoingReport } from './client'
 
 /** Answers as the portal would, and reports what was asked for. */
 function answering(status: number, body: unknown): ReturnType<typeof vi.fn> {
@@ -62,6 +63,7 @@ describe('fetchConfig', () => {
     expect(await fetchConfig('https://portal.test', 'wm_key', window)).toEqual({
       flows: [],
       launcher: { enabled: false, label: 'How do I…' },
+      reports: { enabled: false, labels: 'none' },
     })
   })
 
@@ -136,5 +138,58 @@ describe('fetchFlow', () => {
       vi.fn(async () => Promise.reject(new Error('offline'))),
     )
     expect(await fetchFlow('https://portal.test', 'wm_key', 'f1', window)).toBeNull()
+  })
+})
+
+describe('reports in the config', () => {
+  it('offers reports only when the portal says so, with its label policy', async () => {
+    answering(200, { ...oneFlow, reports: { enabled: true, labels: 'all' } })
+    expect((await fetchConfig('https://portal.test', 'wm_key', window)).reports).toEqual({
+      enabled: true,
+      labels: 'all',
+    })
+  })
+
+  it('offers none when an older portal does not mention them', async () => {
+    answering(200, oneFlow)
+    expect((await fetchConfig('https://portal.test', 'wm_key', window)).reports.enabled).toBe(false)
+  })
+
+  it('reads an unknown label policy as the cautious one', async () => {
+    answering(200, { ...oneFlow, reports: { enabled: true, labels: 'whatever' } })
+    expect((await fetchConfig('https://portal.test', 'wm_key', window)).reports.labels).toBe('none')
+  })
+})
+
+describe('sendReport', () => {
+  const report: OutgoingReport = {
+    reportVersion: REPORT_VERSION,
+    note: 'Save did nothing',
+    steps: [{ type: 'instruction', id: 's1', text: 'Something to read' }],
+    pages: ['/'],
+    labels: 'none',
+  }
+
+  it('writes the same report format the portal reads', () => {
+    expect(REPORT_VERSION).toBe(CORE_REPORT_VERSION)
+  })
+
+  it("posts the report as JSON to the app's reports endpoint, without cookies", async () => {
+    const stub = answering(202, null)
+    expect(await sendReport('https://portal.test', 'wm_key', report, window)).toBe(true)
+
+    const [url, init] = stub.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('https://portal.test/api/v1/reports?key=wm_key')
+    expect(init.method).toBe('POST')
+    expect(init.credentials).toBe('omit')
+    expect(JSON.parse(String(init.body))).toEqual(report)
+  })
+
+  it('says so when it never got there, so the person can try again', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Promise.reject(new Error('offline'))),
+    )
+    expect(await sendReport('https://portal.test', 'wm_key', report, window)).toBe(false)
   })
 })

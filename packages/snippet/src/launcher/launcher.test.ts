@@ -201,4 +201,22 @@ describe('the launcher', () => {
     // A drag is not a press: the panel stays open.
     expect(root.querySelector('[role="dialog"]')).not.toBeNull()
   })
+
+  it('offers "Report a problem" only when the app has reports on', () => {
+    const without = open([flow('a', 'Order coffee')])
+    expect(without.root.querySelector('.report')).toBeNull()
+    overlay?.destroy()
+
+    const { root } = open([flow('a', 'Order coffee')], { onReport: () => {} })
+    expect(root.querySelector('.report')?.textContent).toContain('Report a problem')
+  })
+
+  it('closes itself before the report starts, so the page is in view', () => {
+    const onReport = vi.fn()
+    const { root } = open([], { onReport })
+    root.querySelector<HTMLButtonElement>('.report button')?.click()
+
+    expect(onReport).toHaveBeenCalledOnce()
+    expect(root.querySelector('[role="dialog"]')).toBeNull()
+  })
 })

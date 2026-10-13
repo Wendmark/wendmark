@@ -71,6 +71,8 @@ export const SHELL_CSS = `
   .wm-bar.is-teal:hover { background: #0a4642; }
   .wm-bar.is-dark { background: #1f1d2b; }
   .wm-bar.is-dark:hover { background: #33304a; }
+  .wm-bar.is-signal { background: #b8491a; }
+  .wm-bar.is-signal:hover { background: #9c3c13; }
   .wm-bar:focus-visible { outline: 2px solid #fff; outline-offset: -4px; border-radius: 12px; }
   .wm-bar.is-dragging { cursor: grabbing; }
   .wm-bar .pill { max-width: 100%; }
@@ -101,8 +103,11 @@ export interface ShellOptions {
   width: number
   /** Where the position is remembered. */
   positionKey: string
-  /** Teal for guiding, dark for recording, so the two are never confused. */
-  tone: 'teal' | 'dark'
+  /**
+   * Teal for guiding, dark for recording, orange for reporting a problem, so
+   * none is ever mistaken for another.
+   */
+  tone: 'teal' | 'dark' | 'signal'
   /** A recording light in the pill. */
   recording?: boolean
   /** Stand-in size of the open panel where nothing is laid out (tests). */
