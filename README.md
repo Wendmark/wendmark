@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/logo/png/wendmark-horizontal-reversed@2x.png">
-    <img src="docs/brand/logo/png/wendmark-horizontal@2x.png" alt="Wendmark" width="300">
-  </picture>
+  <img src="docs/brand/logo/png/wendmark-horizontal-tile@2x.png" alt="Wendmark" width="340">
 </p>
 
 <p align="center">
@@ -12,7 +9,7 @@
 <p align="center">
   <a href="LICENSING.md"><img alt="Licence: Apache-2.0 and AGPL-3.0" src="https://img.shields.io/badge/licence-Apache--2.0%20%2F%20AGPL--3.0-0e5c57"></a>
   <a href=".github/workflows/ci.yml"><img alt="CI" src="https://github.com/Wendmark/wendmark/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Snippet size" src="https://img.shields.io/badge/snippet-12.6%20KB%20gzipped-0e5c57">
+  <img alt="Snippet size" src="https://img.shields.io/badge/snippet-16.1%20KB%20gzipped-0e5c57">
 </p>
 
 ---
@@ -140,7 +137,7 @@ Add an app in the portal, then paste the tag it gives you:
 <script src="https://your-portal.example.com/snippet.js" data-app="wm_…"></script>
 ```
 
-That is the whole integration. The snippet is **12.6 KB gzipped** against a
+That is the whole integration. The snippet is **16.1 KB gzipped** against a
 30 KB budget enforced in CI, renders everything inside a shadow root with
 `:host { all: initial }`, exposes exactly one global, and uses no framework —
 so it cannot restyle your pages and your pages cannot restyle it.
