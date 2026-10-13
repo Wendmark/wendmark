@@ -834,3 +834,104 @@ button.destructive {
   margin-top: 0;
   width: min(420px, 100%);
 }
+
+/* ---- problem reports ---- */
+
+.header-links {
+  display: flex;
+  gap: var(--s2);
+}
+
+.report-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin: var(--s4) 0;
+  padding: var(--s3) var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.report-filter p {
+  margin: 0;
+}
+
+.report-note {
+  margin: var(--s4) 0 var(--s5);
+  padding: var(--s4) var(--s5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--signal);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 1.05rem;
+  white-space: pre-wrap;
+}
+
+.report-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--s2) var(--s4);
+  margin: 0 0 var(--s6);
+  font-size: 0.9rem;
+}
+
+.report-meta dt {
+  color: var(--muted);
+}
+
+.report-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.report-steps {
+  display: grid;
+  gap: var(--s2);
+  padding-left: var(--s5);
+}
+
+.report-steps li::marker {
+  color: var(--muted);
+}
+
+.report-step {
+  padding: 0.6rem 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.report-step p {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+}
+
+.report-step details {
+  margin-top: 0.35rem;
+}
+
+.report-step summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.report-step {
+  min-width: 0;
+}
+
+/* Selectors can be long and have no spaces; wrap them inside the card. */
+.report-step .code {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.report-delete {
+  margin-top: var(--s6);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--border);
+}
