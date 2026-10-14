@@ -59,7 +59,8 @@ export function urlMatches(recorded: string, current: string): boolean {
 
   return was.every((segment, index) => {
     const other = now[index] ?? ''
-    return segment === other || looksLikeId(segment) || looksLikeId(other)
+    // `*` is an identifier masked out of a problem report: any one will do.
+    return segment === other || segment === '*' || looksLikeId(segment) || looksLikeId(other)
   })
 }
 

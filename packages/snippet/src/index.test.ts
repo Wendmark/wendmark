@@ -66,6 +66,18 @@ describe('the snippet API', () => {
     expect(document.querySelector(OVERLAY_TAG)).toBeNull()
   })
 
+  it('remembers nothing between pages when asked not to', () => {
+    renderPage()
+    sessionStorage.clear()
+    start(flow, { remember: false })
+    expect(sessionStorage.length).toBe(0)
+
+    stop()
+    start(flow)
+    expect(sessionStorage.length).toBeGreaterThan(0)
+    sessionStorage.clear()
+  })
+
   it('does nothing when stopping twice', () => {
     renderPage()
     start(flow)

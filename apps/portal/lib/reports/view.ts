@@ -75,3 +75,33 @@ export function describeLabels(labels: string): string {
     ? 'Labels kept: the words on the page were stored as they were.'
     : 'Structure only: the words on the page were taken out before it was stored.'
 }
+
+/** Where a replay opens the app. */
+export interface ReplayStart {
+  /** Addresses to offer, the one the report came from first. */
+  origins: string[]
+  /** The page to open on. */
+  path: string
+}
+
+/**
+ * Where to replay a report: the address it was sent from, when that is
+ * still one of the app's, and the first page the person was on.
+ *
+ * A page whose identifier was masked (`/orders/*`) cannot be opened as it
+ * stands, so the replay starts at the root instead and the guide says which
+ * page each step is on, as any guide does.
+ */
+export function replayStart(
+  report: { origin: string; pages: readonly string[] },
+  appOrigins: readonly string[],
+): ReplayStart {
+  const origins = appOrigins.includes(report.origin)
+    ? [report.origin, ...appOrigins.filter((origin) => origin !== report.origin)]
+    : [...appOrigins]
+
+  const first = report.pages[0] ?? '/'
+  const path = first.startsWith('/') && !first.split('/').includes('*') ? first : '/'
+
+  return { origins, path }
+}

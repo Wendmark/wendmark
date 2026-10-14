@@ -86,18 +86,28 @@ export function stopRecording(): Flow | null {
  * null when that process is not available — unpublished, or the portal could
  * not be reached.
  */
-export function start(flow: Flow, options?: { onEnd?: () => void }): Player
-export function start(flowId: string, options?: { onEnd?: () => void }): Promise<Player | null>
+/**
+ * How a flow is started. `remember: false` keeps no progress between pages,
+ * for a flow the portal cannot serve again by its id, such as a replayed
+ * problem report.
+ */
+export interface StartOptions {
+  onEnd?: () => void
+  remember?: boolean
+}
+
+export function start(flow: Flow, options?: StartOptions): Player
+export function start(flowId: string, options?: StartOptions): Promise<Player | null>
 export function start(
   flow: Flow | string,
-  options: { onEnd?: () => void } = {},
+  options: StartOptions = {},
 ): Player | Promise<Player | null> {
   if (typeof flow === 'string') return startById(flow, options)
   return startNow(flow, options)
 }
 
 /** Fetches a published process, then guides it. */
-async function startById(flowId: string, options: { onEnd?: () => void }): Promise<Player | null> {
+async function startById(flowId: string, options: StartOptions): Promise<Player | null> {
   const portal = portalOrigin(document)
   const key = appKey(document)
   if (!portal || !key) return null
@@ -122,7 +132,7 @@ export async function listFlows(): Promise<FlowSummary[]> {
   return (await fetchConfig(portal, key, window)).flows
 }
 
-function startNow(flow: Flow, options: { onEnd?: () => void } = {}): Player {
+function startNow(flow: Flow, options: StartOptions = {}): Player {
   const verdict = checkFlow(flow)
   if (verdict === 'too-new') {
     // Worth its own message: nothing is wrong with the flow, this copy of
@@ -136,11 +146,13 @@ function startNow(flow: Flow, options: { onEnd?: () => void } = {}): Player {
     throw new Error('Wendmark: this flow does not have the shape of a playable flow.')
   }
 
+  const remember = options.remember !== false
   stop()
   current = play(flow, {
+    ...(remember ? {} : { storage: null }),
     onFinish: () => {
       current = null
-      markCompleted(safeLocalStorage(), flow.id)
+      if (remember) markCompleted(safeLocalStorage(), flow.id)
       options.onEnd?.()
     },
     onStop: () => {

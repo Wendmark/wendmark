@@ -2,10 +2,15 @@ import { isAllowedOrigin } from '../apps/origins'
 import { isPublicKey } from '../apps/keys'
 import { getDb } from '../db'
 import { require as requirePermission } from '../permissions'
-import { SESSION_LIFETIME_MS, generateToken, hashToken } from './author-tokens'
+import {
+  REPLAY_SESSION_LIFETIME_MS,
+  SESSION_LIFETIME_MS,
+  generateToken,
+  hashToken,
+} from './author-tokens'
 
 /**
- * Pairing: how a snippet gets permission to record.
+ * Pairing: how a snippet gets permission to record, or to replay a report.
  *
  * The snippet invents a code and asks to record. The portal, where the
  * person is signed in, approves it. The code is useless on its own, nothing
@@ -17,6 +22,22 @@ import { SESSION_LIFETIME_MS, generateToken, hashToken } from './author-tokens'
 /** A request is worth approving for this long. */
 export const PAIRING_LIFETIME_MS = 90_000
 
+/**
+ * What a snippet can ask for. Kept apart all the way through: a recording
+ * session cannot read reports, and a replay session cannot save anything.
+ */
+export type PairingPurpose = 'record' | 'replay'
+
+export function isPairingPurpose(value: unknown): value is PairingPurpose {
+  return value === 'record' || value === 'replay'
+}
+
+/** Who may approve each purpose. */
+const PERMISSION_FOR = { record: 'flow:create', replay: 'report:read' } as const
+
+/** What an approval grants: recording, or replaying one report. */
+export type Grant = { purpose: 'record' } | { purpose: 'replay'; reportId: string }
+
 /** A code invented by a snippet, for it to collect its session with later. */
 export function generatePairingCode(): string {
   return generateToken()
@@ -25,7 +46,7 @@ export function generatePairingCode(): string {
 export type StartResult = { ok: true } | { ok: false }
 
 /**
- * A snippet asking to record.
+ * A snippet asking to record, or to replay.
  *
  * Deliberately says nothing useful back: this is a public endpoint, and the
  * answer must not reveal whether a key or an origin is real.
@@ -34,6 +55,7 @@ export async function startPairing(input: {
   key: string
   origin: string
   code: string
+  purpose?: PairingPurpose
 }): Promise<StartResult> {
   if (!isPublicKey(input.key) || !input.code) return { ok: false }
 
@@ -50,6 +72,7 @@ export async function startPairing(input: {
       codeHash: hashToken(input.code),
       appId: app.id,
       origin: input.origin,
+      purpose: input.purpose ?? 'record',
       expiresAt: new Date(Date.now() + PAIRING_LIFETIME_MS),
     },
   })
@@ -63,12 +86,13 @@ export interface PendingRequest {
   createdAt: Date
 }
 
-/** Requests waiting for approval for one app, newest first. */
+/** Requests waiting for approval for one app and purpose, newest first. */
 export async function listPendingPairings(
   ctx: { organizationId: string | null; role: string | null },
   appId: string,
+  purpose: PairingPurpose = 'record',
 ): Promise<PendingRequest[]> {
-  requirePermission(ctx.role, 'flow:create')
+  requirePermission(ctx.role, PERMISSION_FOR[purpose])
 
   const app = await getDb().app.findFirst({
     where: { id: appId, organizationId: ctx.organizationId ?? '' },
@@ -77,7 +101,7 @@ export async function listPendingPairings(
   if (!app) return []
 
   const requests = await getDb().pairingRequest.findMany({
-    where: { appId: app.id, approved: false, expiresAt: { gt: new Date() } },
+    where: { appId: app.id, purpose, approved: false, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'desc' },
     take: 5,
   })
@@ -97,8 +121,9 @@ export async function approvePairing(
   ctx: { userId: string; organizationId: string | null; role: string | null },
   appId: string,
   requestId: string,
+  grant: Grant = { purpose: 'record' },
 ): Promise<ApproveResult> {
-  requirePermission(ctx.role, 'flow:create')
+  requirePermission(ctx.role, PERMISSION_FOR[grant.purpose])
 
   const app = await getDb().app.findFirst({
     where: { id: appId, organizationId: ctx.organizationId ?? '' },
@@ -107,9 +132,15 @@ export async function approvePairing(
   if (!app) return { ok: false, reason: 'That app does not exist.' }
 
   const request = await getDb().pairingRequest.findFirst({
-    where: { id: requestId, appId: app.id, approved: false, expiresAt: { gt: new Date() } },
+    where: {
+      id: requestId,
+      appId: app.id,
+      purpose: grant.purpose,
+      approved: false,
+      expiresAt: { gt: new Date() },
+    },
   })
-  if (!request) return { ok: false, reason: 'That request has expired. Try recording again.' }
+  if (!request) return { ok: false, reason: 'That request has expired. Try again.' }
 
   // The address must still be one this app is allowed on: it may have been
   // removed since the request arrived.
@@ -117,8 +148,18 @@ export async function approvePairing(
     return { ok: false, reason: 'That address is no longer on the app’s list.' }
   }
 
+  // A replay may only read a report of this same app.
+  if (grant.purpose === 'replay') {
+    const report = await getDb().report.findFirst({
+      where: { id: grant.reportId, appId: app.id },
+      select: { id: true },
+    })
+    if (!report) return { ok: false, reason: 'That report does not exist any more.' }
+  }
+
   const sessionToken = generateToken()
-  const expiresAt = new Date(Date.now() + SESSION_LIFETIME_MS)
+  const lifetime = grant.purpose === 'replay' ? REPLAY_SESSION_LIFETIME_MS : SESSION_LIFETIME_MS
+  const expiresAt = new Date(Date.now() + lifetime)
 
   await getDb().authorSession.create({
     data: {
@@ -126,6 +167,8 @@ export async function approvePairing(
       appId: app.id,
       userId: ctx.userId,
       origin: request.origin,
+      purpose: grant.purpose,
+      ...(grant.purpose === 'replay' ? { reportId: grant.reportId } : {}),
       expiresAt,
     },
   })
