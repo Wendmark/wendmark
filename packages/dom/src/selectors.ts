@@ -22,12 +22,15 @@ export function matchesOnly(selector: string, element: Element): boolean {
   }
 }
 
-/** Which of its same-tag siblings this element is, counting from 1. */
-function positionAmongSiblings(element: Element): number {
+/**
+ * Which of its same-tag siblings this element is, counting from 1, or null
+ * when it has none and a position would add nothing.
+ */
+function positionAmongSiblings(element: Element): number | null {
   const parent = element.parentElement
-  if (!parent) return 1
+  if (!parent) return null
   const sameTag = Array.from(parent.children).filter((c) => c.localName === element.localName)
-  return sameTag.indexOf(element) + 1
+  return sameTag.length > 1 ? sameTag.indexOf(element) + 1 : null
 }
 
 /** A selector for one element on its own, ignoring its ancestors. */
@@ -37,8 +40,12 @@ function segment(element: Element): string {
     .map((name) => `.${CSS.escape(name)}`)
     .join('')
   let selector = element.localName + classes
+  // The first of several needs its position as much as the third does:
+  // without it, `nav > a` is every link in the nav. Labels usually tell them
+  // apart when guiding, but a problem report is stored without labels, so
+  // the selector has to do it alone.
   const position = positionAmongSiblings(element)
-  if (position > 1) selector += `:nth-of-type(${position})`
+  if (position !== null) selector += `:nth-of-type(${position})`
   return selector
 }
 
