@@ -10,7 +10,8 @@ import type { Recording, RecordingOptions } from '../recorder/recorder'
  * copy would be wasted bytes.
  */
 export interface SnippetApi {
-  startFlow: (flow: Flow, options?: { onEnd?: () => void }) => void
+  /** `remember: false` keeps no progress between pages. */
+  startFlow: (flow: Flow, options?: { onEnd?: () => void; remember?: boolean }) => void
   stopFlow: () => void
   startRecording: (options: RecordingOptions) => Recording
   /**
@@ -39,6 +40,8 @@ export interface AuthorContext {
 
 export interface AuthorApi {
   start: (context: AuthorContext) => void
+  /** Plays the report the session was approved for. */
+  replay?: (context: AuthorContext) => void | Promise<void>
 }
 
 /** Whatever the author bundle put on the window, if it is loaded. */

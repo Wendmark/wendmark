@@ -167,6 +167,9 @@ model PairingRequest {
   codeHash     String   @unique
   appId        String   @db.Uuid
   origin       String
+  /// What the snippet asked for: "record" a process, or "replay" a report.
+  /// Approving one never grants the other.
+  purpose      String   @default("record")
   approved     Boolean  @default(false)
   /// Set when approved, collected once by the snippet, then the row is gone.
   sessionToken String?
@@ -180,8 +183,9 @@ model PairingRequest {
   @@map("pairing_request")
 }
 
-/// A redeemed author token: permission to save drafts for one app, from one
-/// origin, until it expires. Stored rather than signed, so it can be revoked.
+/// A redeemed author token: permission to save drafts for one app, or to
+/// read one report to replay it, from one origin, until it expires. Stored
+/// rather than signed, so it can be revoked.
 model AuthorSession {
   id         String    @id @default(uuid()) @db.Uuid
   /// SHA-256 of the session token. The token itself is never stored.
@@ -189,6 +193,10 @@ model AuthorSession {
   appId      String    @db.Uuid
   userId     String    @db.Uuid
   origin     String
+  /// "record": may save drafts. "replay": may read the one report below,
+  /// and nothing else.
+  purpose    String    @default("record")
+  reportId   String?   @db.Uuid
   expiresAt  DateTime
   createdAt  DateTime  @default(now())
   lastUsedAt DateTime?

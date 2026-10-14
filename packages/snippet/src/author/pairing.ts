@@ -1,8 +1,8 @@
 /**
- * Asking the portal for permission to record.
+ * Asking the portal for permission to record, or to replay a report.
  *
- * The snippet invents a code, tells the portal it would like to record this
- * app at this address, then waits for the portal — where the person is
+ * The snippet invents a code, tells the portal what it would like to do in
+ * this app at this address, then waits for the portal — where the person is
  * actually signed in — to approve it and hand back a session.
  *
  * Nothing secret goes through the address bar, and no window talks to
@@ -10,8 +10,14 @@
  * we do not control customers' headers. See docs/decisions/author-mode.md.
  */
 
-/** The hint the portal puts in the address to start this. */
-const HINT = 'wm=author'
+/** What the portal can send someone here to do. */
+export type Purpose = 'record' | 'replay'
+
+/** The hints the portal puts in the address, one per purpose. */
+const HINTS = new Map<string, Purpose>([
+  ['wm=author', 'record'],
+  ['wm=replay', 'replay'],
+])
 
 /** How long to keep asking, and how often. */
 const POLL_TIMEOUT_MS = 60_000
@@ -23,18 +29,25 @@ export interface AuthorSession {
   expiresAt: string
 }
 
-/** Whether this page was opened to record a process. */
-export function wantsAuthorMode(view: Window): boolean {
-  return view.location.hash.includes(HINT)
+/** The parts of the address after `#`. */
+function hashParts(view: Window): string[] {
+  return view.location.hash.replace(/^#/, '').split('&')
+}
+
+/** What this page was opened to do, if the portal sent someone here. */
+export function requestedPurpose(view: Window): Purpose | null {
+  for (const part of hashParts(view)) {
+    const purpose = HINTS.get(part)
+    if (purpose) return purpose
+  }
+  return null
 }
 
 /** Removes the hint, so a reload or a copied link does not start this again. */
 export function clearHint(view: Window): void {
-  if (!wantsAuthorMode(view)) return
-  const rest = view.location.hash
-    .replace(/^#/, '')
-    .split('&')
-    .filter((part) => part !== HINT)
+  if (!requestedPurpose(view)) return
+  const rest = hashParts(view)
+    .filter((part) => !HINTS.has(part))
     .join('&')
   const url = view.location.pathname + view.location.search + (rest ? `#${rest}` : '')
   try {
@@ -51,17 +64,18 @@ export function generateCode(view: Window): string {
   return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-/** Tells the portal this app would like to record. Grants nothing by itself. */
-export async function askToRecord(
+/** Tells the portal what this app would like to do. Grants nothing by itself. */
+export async function askPermission(
   portalOrigin: string,
   key: string,
   code: string,
+  purpose: Purpose,
 ): Promise<boolean> {
   try {
     const response = await fetch(`${portalOrigin}/api/v1/author/pair/start`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ key, code }),
+      body: JSON.stringify({ key, code, purpose }),
       mode: 'cors',
       credentials: 'omit',
     })

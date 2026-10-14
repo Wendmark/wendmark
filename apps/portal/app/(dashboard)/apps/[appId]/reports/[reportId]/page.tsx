@@ -4,8 +4,15 @@ import { getApp } from '../../../../../../lib/apps/service'
 import { requireUser } from '../../../../../../lib/auth/session'
 import { can } from '../../../../../../lib/permissions'
 import { getReport } from '../../../../../../lib/reports/read'
-import { describeLabels, pageTrail, readSteps, viewStep } from '../../../../../../lib/reports/view'
+import {
+  describeLabels,
+  pageTrail,
+  readSteps,
+  replayStart,
+  viewStep,
+} from '../../../../../../lib/reports/view'
 import { DeleteReport } from './delete-report'
+import { ReplayButton } from './replay-button'
 
 /**
  * One report: what the person said went wrong, and what they did.
@@ -30,6 +37,7 @@ export default async function ReportPage({
   if (!report || report.appId !== app.id) notFound()
 
   const steps = readSteps(report.stepsJson).map(viewStep)
+  const start = replayStart(report, app.origins)
 
   return (
     <section>
@@ -75,6 +83,9 @@ export default async function ReportPage({
       <h2>
         What they did <span className="count">{steps.length}</span>
       </h2>
+      {steps.length > 0 ? (
+        <ReplayButton reportId={report.id} origins={start.origins} path={start.path} />
+      ) : null}
       <ol className="report-steps">
         {steps.map((step, index) => (
           <li key={index}>

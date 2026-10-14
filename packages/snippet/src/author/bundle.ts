@@ -23,6 +23,9 @@ import type { AuthorContext } from './loader'
 import { createRecorderPanel } from './panel'
 import { saveDraft as sendDraft } from './save'
 
+// Replaying a problem report, for people the portal sent here to do that.
+export { replay } from './replay'
+
 /**
  * Starts authoring in this page: record what the author does, show it in a
  * panel they can fix as they go, and let them try it before saving.

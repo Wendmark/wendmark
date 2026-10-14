@@ -6,6 +6,7 @@ import { requireUser } from '../lib/auth/session'
 import { InvalidInputError, NotFoundError, type Context } from '../lib/apps/service'
 import { NotAllowedError } from '../lib/permissions'
 import { deleteReport, eraseReportsFrom } from '../lib/reports/read'
+import { approveWaitingReplay, type ReplayWaitResult } from '../lib/reports/replay'
 
 export interface FormResult {
   error?: string
@@ -55,4 +56,22 @@ export async function eraseReportsAction(
   revalidatePath(`/apps/${appId}`)
   revalidatePath(`/apps/${appId}/reports`)
   redirect(`/apps/${appId}/reports`)
+}
+
+/**
+ * Approves the app asking to replay this report, once it asks.
+ *
+ * The report page calls this while it waits: the click on Replay is the
+ * approval, and this matches it to the request from the app's new tab.
+ */
+export async function approveWaitingReplayAction(
+  reportId: string,
+  origin: string,
+): Promise<ReplayWaitResult> {
+  try {
+    return await approveWaitingReplay(await context(), reportId, origin)
+  } catch (error) {
+    if (error instanceof NotAllowedError) return { status: 'error', error: error.message }
+    throw error
+  }
 }

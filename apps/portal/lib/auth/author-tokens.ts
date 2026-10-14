@@ -18,6 +18,12 @@ export const TOKEN_LIFETIME_MS = 60_000
 /** How long an author session lasts once the token has been redeemed. */
 export const SESSION_LIFETIME_MS = 60 * 60 * 1000
 
+/**
+ * A replay session is shorter: it reads one report, which takes a minute,
+ * and following the steps takes a few more.
+ */
+export const REPLAY_SESSION_LIFETIME_MS = 15 * 60 * 1000
+
 /** Only the hash is stored, so a leaked database cannot author anything. */
 export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
@@ -85,6 +91,11 @@ export interface AuthorSession {
   expiresAt: Date
 }
 
+/** A session that may replay one report, and do nothing else. */
+export interface ReplaySession extends AuthorSession {
+  reportId: string
+}
+
 export type RedeemResult =
   { ok: true; sessionToken: string; session: AuthorSession } | { ok: false; reason: string }
 
@@ -143,12 +154,43 @@ export async function redeemAuthorToken(token: string, origin: string): Promise<
  * Who a saved-draft request is coming from, or null.
  *
  * Sessions are rows rather than signed values, so rotating an app's key or
- * removing an origin can end them immediately.
+ * removing an origin can end them immediately. Only a recording session
+ * counts: one approved to replay a report cannot save anything.
  */
 export async function verifyAuthorSession(
   sessionToken: string,
   origin: string,
 ): Promise<AuthorSession | null> {
+  const record = await findSession(sessionToken, origin, 'record')
+  if (!record) return null
+
+  return {
+    appId: record.appId,
+    userId: record.userId,
+    origin: record.origin,
+    expiresAt: record.expiresAt,
+  }
+}
+
+/** Who a replay request is coming from, and which report it may read, or null. */
+export async function verifyReplaySession(
+  sessionToken: string,
+  origin: string,
+): Promise<ReplaySession | null> {
+  const record = await findSession(sessionToken, origin, 'replay')
+  if (!record?.reportId) return null
+
+  return {
+    appId: record.appId,
+    userId: record.userId,
+    origin: record.origin,
+    expiresAt: record.expiresAt,
+    reportId: record.reportId,
+  }
+}
+
+/** A live session for this token, origin and purpose, marked as used, or null. */
+async function findSession(sessionToken: string, origin: string, purpose: 'record' | 'replay') {
   if (!sessionToken) return null
 
   const record = await getDb().authorSession.findUnique({
@@ -157,18 +199,13 @@ export async function verifyAuthorSession(
   if (!record) return null
   if (record.expiresAt.getTime() < Date.now()) return null
   if (record.origin !== origin) return null
+  if (record.purpose !== purpose) return null
 
   await getDb().authorSession.update({
     where: { id: record.id },
     data: { lastUsedAt: new Date() },
   })
-
-  return {
-    appId: record.appId,
-    userId: record.userId,
-    origin: record.origin,
-    expiresAt: record.expiresAt,
-  }
+  return record
 }
 
 /** Ends every author session for an app, e.g. when its key is rotated. */

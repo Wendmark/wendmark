@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
-import { startPairing } from '../../../../../../lib/auth/pairing'
+import { isPairingPurpose, startPairing } from '../../../../../../lib/auth/pairing'
 import { allowedHeaders } from '../../../../../../lib/http/cors'
 
 /**
- * A snippet asking to record: "this app, at this address, with this code".
+ * A snippet asking to record, or to replay a report: "this app, at this
+ * address, with this code, for this purpose".
  *
  * Public and cross-origin. The answer is the same whatever happens, so
  * nothing can be learned about which keys or addresses exist. Nothing is
@@ -19,9 +20,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     return accepted(origin)
   }
 
-  const fields = (body ?? {}) as { key?: unknown; code?: unknown }
-  if (typeof fields.key === 'string' && typeof fields.code === 'string' && origin) {
-    await startPairing({ key: fields.key, origin, code: fields.code })
+  const fields = (body ?? {}) as { key?: unknown; code?: unknown; purpose?: unknown }
+  // An older snippet sends no purpose, and only ever wanted to record.
+  const purpose = fields.purpose === undefined ? 'record' : fields.purpose
+  if (
+    typeof fields.key === 'string' &&
+    typeof fields.code === 'string' &&
+    isPairingPurpose(purpose) &&
+    origin
+  ) {
+    await startPairing({ key: fields.key, origin, code: fields.code, purpose })
   }
 
   return accepted(origin)

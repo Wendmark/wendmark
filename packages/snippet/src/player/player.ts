@@ -44,8 +44,11 @@ export interface PlayerOptions {
   view?: Window
   /** Where to start, when picking a flow up after a page load. */
   startIndex?: number
-  /** Where progress is remembered. Defaults to the page's session storage. */
-  storage?: Storage
+  /**
+   * Where progress is remembered. Defaults to the page's session storage;
+   * null remembers nothing, for a flow that cannot be fetched again by id.
+   */
+  storage?: Storage | null
   onFinish?: () => void
   onStop?: () => void
 }
@@ -69,7 +72,8 @@ export function startFlow(flow: Flow, options: PlayerOptions = {}): Player {
   const doc = options.doc ?? document
   const view = options.view ?? window
 
-  const storage = options.storage ?? safeSessionStorage(view)
+  const storage =
+    options.storage === null ? undefined : (options.storage ?? safeSessionStorage(view))
 
   let index = options.startIndex ?? 0
   let targets: Element[] = []

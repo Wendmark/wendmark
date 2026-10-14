@@ -18,6 +18,11 @@ describe('urlMatches', () => {
     expect(urlMatches('https://fika.test/profile', 'https://fika.test/orders')).toBe(false)
   })
 
+  it('lets a masked segment from a problem report stand for any one', () => {
+    expect(urlMatches('/orders/*', 'https://fika.test/orders/latest')).toBe(true)
+    expect(urlMatches('/orders/*', 'https://fika.test/profile/latest')).toBe(false)
+  })
+
   it('matches the same page across environments', () => {
     // A flow recorded on a laptop has to work in production. Which app a flow
     // belongs to is decided by the portal, not by the address bar.

@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  askToRecord,
+  askPermission,
   clearHint,
   collectSession,
   generateCode,
+  requestedPurpose,
   waitForApproval,
-  wantsAuthorMode,
 } from './pairing'
 
 const PORTAL = 'https://wendmark.test'
@@ -16,14 +16,17 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('wantsAuthorMode', () => {
-  it('recognises the hint the portal adds', () => {
-    expect(wantsAuthorMode({ location: { hash: '#wm=author' } } as Window)).toBe(true)
+describe('requestedPurpose', () => {
+  it('recognises the hints the portal adds', () => {
+    expect(requestedPurpose({ location: { hash: '#wm=author' } } as Window)).toBe('record')
+    expect(requestedPurpose({ location: { hash: '#wm=replay' } } as Window)).toBe('replay')
+    expect(requestedPurpose({ location: { hash: '#tab=2&wm=replay' } } as Window)).toBe('replay')
   })
 
   it('ignores an ordinary page', () => {
-    expect(wantsAuthorMode({ location: { hash: '' } } as Window)).toBe(false)
-    expect(wantsAuthorMode({ location: { hash: '#/orders' } } as Window)).toBe(false)
+    expect(requestedPurpose({ location: { hash: '' } } as Window)).toBeNull()
+    expect(requestedPurpose({ location: { hash: '#/orders' } } as Window)).toBeNull()
+    expect(requestedPurpose({ location: { hash: '#wm=authority' } } as Window)).toBeNull()
   })
 })
 
@@ -35,6 +38,15 @@ describe('clearHint', () => {
       history: { replaceState },
     } as unknown as Window)
     expect(replaceState).toHaveBeenCalledWith(null, '', '/profile?q=1#tab=2')
+  })
+
+  it('takes a replay hint out too', () => {
+    const replaceState = vi.fn()
+    clearHint({
+      location: { hash: '#wm=replay', pathname: '/subscription', search: '' },
+      history: { replaceState },
+    } as unknown as Window)
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/subscription')
   })
 
   it('leaves an ordinary address alone', () => {
@@ -55,16 +67,20 @@ describe('generateCode', () => {
   })
 })
 
-describe('askToRecord', () => {
-  it('tells the portal which app, and the code it invented', async () => {
+describe('askPermission', () => {
+  it('tells the portal which app, the code it invented, and what for', async () => {
     const fetchMock = vi.fn(() => Promise.resolve(new Response('{}', { status: 202 })))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(askToRecord(PORTAL, 'wm_key', 'abc')).resolves.toBe(true)
+    await expect(askPermission(PORTAL, 'wm_key', 'abc', 'replay')).resolves.toBe(true)
 
     const call = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(call[0]).toBe('https://wendmark.test/api/v1/author/pair/start')
-    expect(JSON.parse(String(call[1].body))).toEqual({ key: 'wm_key', code: 'abc' })
+    expect(JSON.parse(String(call[1].body))).toEqual({
+      key: 'wm_key',
+      code: 'abc',
+      purpose: 'replay',
+    })
     expect(call[1].credentials).toBe('omit')
   })
 
@@ -73,7 +89,7 @@ describe('askToRecord', () => {
       'fetch',
       vi.fn(() => Promise.reject(new Error('offline'))),
     )
-    await expect(askToRecord(PORTAL, 'wm_key', 'abc')).resolves.toBe(false)
+    await expect(askPermission(PORTAL, 'wm_key', 'abc', 'record')).resolves.toBe(false)
   })
 })
 
