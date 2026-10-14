@@ -30,6 +30,17 @@ describe('buildSelectors', () => {
     expectAllUnique(buildSelectors(el), el)
   })
 
+  it('pins the first of several look-alikes to its place, not only the later ones', () => {
+    // A problem report keeps no labels, so `nav > a.nav-link` would be every
+    // link in the nav, with nothing left to tell them apart.
+    const el = renderPick(
+      '<div id="root"><nav><a data-pick class="nav-link" href="/">Shop</a><a class="nav-link" href="/orders">Orders</a></nav></div>',
+    )
+    const selectors = buildSelectors(el)
+    expect(selectors.join(' ')).toContain('a.nav-link:nth-of-type(1)')
+    expectAllUnique(selectors, el)
+  })
+
   it('ignores generated classes', () => {
     const el = renderPick('<main><button data-pick class="css-1x2y3z btn">Save</button></main>')
     const selectors = buildSelectors(el)
