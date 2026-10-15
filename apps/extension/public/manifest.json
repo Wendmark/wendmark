@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Wendmark",
+  "version": "0.0.0",
+  "description": "Show someone how to do something in a web app: record the clicks once, share a link, and they are guided through it.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Wendmark",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "minimum_chrome_version": "120"
+}

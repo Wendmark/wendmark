@@ -67,3 +67,6 @@ jobs:
 
       - name: Snippet size budget (30 KB gzipped)
         run: pnpm size
+
+      - name: Build the browser extension
+        run: pnpm --filter @wendmark/extension build

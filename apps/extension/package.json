@@ -1,0 +1,22 @@
+{
+  "name": "@wendmark/extension",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@wendmark/core": "workspace:*",
+    "@wendmark/dom": "workspace:*",
+    "@wendmark/snippet": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.5",
+    "tsup": "^8.5"
+  }
+}

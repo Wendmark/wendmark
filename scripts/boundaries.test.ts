@@ -18,6 +18,7 @@ const PACKAGES = {
   snippet: 'packages/snippet',
   portal: 'apps/portal',
   playground: 'apps/playground',
+  extension: 'apps/extension',
 } as const
 type Pkg = keyof typeof PACKAGES
 
@@ -27,6 +28,7 @@ const PACKAGE_NAMES: Record<Pkg, string> = {
   snippet: '@wendmark/snippet',
   portal: '@wendmark/portal',
   playground: '@wendmark/playground',
+  extension: '@wendmark/extension',
 }
 
 let eslint: ESLint
@@ -51,7 +53,14 @@ describe('workspace imports follow the dependency table', () => {
       it(`${from} -> ${to} is ${allowed ? 'allowed' : 'rejected'}`, async () => {
         // Relative path into the other package's source, which works for every
         // target (apps have no package exports) and resolves to a real file.
-        const target = to === 'portal' ? 'app/page' : to === 'playground' ? 'src/App' : 'src/index'
+        const target =
+          to === 'portal'
+            ? 'app/page'
+            : to === 'playground'
+              ? 'src/App'
+              : to === 'extension'
+                ? 'src/background'
+                : 'src/index'
         const rel = `../../../${PACKAGES[to]}/${target}`
         const ids = await ruleIds(from, `export * from '${rel}'\n`)
         if (allowed) expect(ids).not.toContain('boundaries/dependencies')
