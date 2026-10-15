@@ -5,6 +5,9 @@
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": true,
+  "exports": {
+    "./engine": "./src/engine.ts"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
