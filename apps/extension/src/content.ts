@@ -12,6 +12,7 @@
  * for anyone, and the recorder never reads what anyone types.
  */
 import type { Flow } from '@wendmark/core'
+import { looksLikeFlow } from '@wendmark/core/guard'
 import {
   startFlow,
   startRecorder,
@@ -23,6 +24,7 @@ import {
 } from '@wendmark/snippet/engine'
 import { addGuide } from './guides'
 import { readDraft, readMessage, type Message } from './messages'
+import { progressReporter } from './play'
 
 /**
  * Clicking the icon twice injects this twice into the same page. The marker
@@ -97,9 +99,42 @@ function run(): void {
     return false
   })
 
-  // Say where we are, and carry on with a recording a page load interrupted.
+  /**
+   * Plays a guide someone shared, from the step it had reached. Its place
+   * is kept by the extension, not in the site's own storage.
+   */
+  function play(flow: Flow, stepIndex: number): void {
+    player?.stop()
+    const ended = () => {
+      player = null
+      void send({ type: 'wendmark:play-ended' })
+    }
+    player = startFlow(flow, {
+      startIndex: stepIndex,
+      storage: progressReporter(
+        (index) => void send({ type: 'wendmark:progress', stepIndex: index }),
+      ),
+      onFinish: ended,
+      onStop: ended,
+    })
+  }
+
+  // Say where we are, and carry on with whatever a page load interrupted: a
+  // recording, or a shared guide being played.
   void send({ type: 'wendmark:ready', origin: location.origin }).then((answer) => {
-    const draft = readDraft((answer as { draft?: unknown } | undefined)?.draft)
+    const reply = (answer ?? {}) as {
+      draft?: unknown
+      play?: { flow?: unknown; stepIndex?: unknown }
+    }
+    // Checked strictly by the worker when it arrived; this is the shape
+    // check that keeps the schema library out of every page.
+    const flow = reply.play?.flow
+    if (looksLikeFlow(flow)) {
+      const index = typeof reply.play?.stepIndex === 'number' ? reply.play.stepIndex : 0
+      if (index < flow.steps.length) play(flow, index)
+      return
+    }
+    const draft = readDraft(reply.draft)
     if (draft && draft.steps.length > 0) record(draft)
   })
 }

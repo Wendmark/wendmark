@@ -1,0 +1,66 @@
+body {
+  background: var(--wash);
+}
+
+main {
+  max-width: 34rem;
+  margin: 8vh auto 0;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 14px 40px rgba(8, 51, 47, 0.1);
+}
+
+h1 {
+  font-size: 22px;
+  margin: 0 0 6px;
+}
+
+p {
+  margin: 0 0 12px;
+}
+
+.lead {
+  color: var(--muted);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 10px;
+}
+
+.buttons button {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.buttons button.primary {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: var(--teal-ink);
+}
+
+details {
+  margin-top: 12px;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+ol.steps {
+  margin: 10px 0 0;
+  padding-left: 22px;
+}
+
+a {
+  color: var(--teal);
+  font-weight: 600;
+}
