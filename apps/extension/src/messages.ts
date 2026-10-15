@@ -1,20 +1,84 @@
 /**
- * What the content script and the service worker say to each other.
+ * What the parts of the extension say to each other.
  *
- * Messages cross from a page into the extension, so the worker never
- * trusts their shape: every one is checked with `readMessage` first.
+ *   content script → worker   ready         "running on this site"
+ *                             draft         the recording so far, after every change
+ *                             draft-closed  the recorder was closed
+ *   side panel → worker       record        "start recording in this tab"
+ *   worker → content script   start-recording
+ *
+ * Messages from a content script come out of a web page, so the worker
+ * never trusts their shape: every message is read with `readMessage`, which
+ * returns null for anything it does not recognise and drops unknown fields.
  */
+import type { Step } from '@wendmark/core'
+import type { Draft } from '@wendmark/snippet/engine'
 
-/** The content script is running in a tab and ready for work. */
 export interface ReadyMessage {
   type: 'wendmark:ready'
+  /** The page's origin, e.g. "https://app.example.com". */
+  origin: string
 }
 
-export type Message = ReadyMessage
+export interface DraftMessage {
+  type: 'wendmark:draft'
+  draft: Draft
+}
+
+export interface DraftClosedMessage {
+  type: 'wendmark:draft-closed'
+}
+
+export interface RecordMessage {
+  type: 'wendmark:record'
+  tabId: number
+}
+
+export interface StartRecordingMessage {
+  type: 'wendmark:start-recording'
+}
+
+export type Message =
+  ReadyMessage | DraftMessage | DraftClosedMessage | RecordMessage | StartRecordingMessage
+
+/** The worker's answer to `ready`: a recording to carry on with, if any. */
+export interface ReadyReply {
+  draft: Draft | null
+}
+
+/** The worker's answer to `record`. */
+export type RecordReply = { ok: true } | { ok: false; reason: 'no-page' }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+/** A draft as far as shape goes. Its steps are the recorder's own. */
+export function readDraft(value: unknown): Draft | null {
+  if (!isRecord(value)) return null
+  if (typeof value.name !== 'string' || !Array.isArray(value.steps)) return null
+  if (!value.steps.every((step) => isRecord(step) && typeof step.type === 'string')) return null
+  return { name: value.name, steps: value.steps as Step[] }
+}
 
 /** A message this extension understands, or null. */
 export function readMessage(value: unknown): Message | null {
-  if (typeof value !== 'object' || value === null) return null
-  const type = (value as { type?: unknown }).type
-  return type === 'wendmark:ready' ? { type } : null
+  if (!isRecord(value)) return null
+  switch (value.type) {
+    case 'wendmark:ready':
+      return typeof value.origin === 'string' ? { type: value.type, origin: value.origin } : null
+    case 'wendmark:draft': {
+      const draft = readDraft(value.draft)
+      return draft ? { type: value.type, draft } : null
+    }
+    case 'wendmark:draft-closed':
+    case 'wendmark:start-recording':
+      return { type: value.type }
+    case 'wendmark:record':
+      return typeof value.tabId === 'number' && Number.isInteger(value.tabId)
+        ? { type: value.type, tabId: value.tabId }
+        : null
+    default:
+      return null
+  }
 }
