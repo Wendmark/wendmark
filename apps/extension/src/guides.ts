@@ -12,6 +12,7 @@
  */
 import type { Flow } from '@wendmark/core'
 import { looksLikeFlow } from '@wendmark/core/guard'
+import { readShare, type ShareSettings } from './share'
 
 export interface StoredGuide {
   id: string
@@ -21,6 +22,8 @@ export interface StoredGuide {
   /** Milliseconds since the epoch. */
   createdAt: number
   pinned: boolean
+  /** What sharing it leaves out, masks and adds. See share.ts. */
+  share?: ShareSettings
 }
 
 /** The part of `chrome.storage.local` this needs. */
@@ -106,6 +109,24 @@ export async function setPinned(
   await area.set({
     [KEY]: guides.map((guide) => (guide.id === id ? { ...guide, pinned } : guide)),
   })
+}
+
+/** Keeps what the person chose in the preview: masking, steps left out, notes. */
+export async function setShare(
+  area: StorageArea,
+  id: string,
+  share: ShareSettings,
+  now = Date.now(),
+): Promise<void> {
+  const guides = await readAll(area, now)
+  await area.set({
+    [KEY]: guides.map((guide) => (guide.id === id ? { ...guide, share: readShare(share) } : guide)),
+  })
+}
+
+/** A guide's sharing choices, the defaults until the person changes them. */
+export function shareOf(guide: StoredGuide): ShareSettings {
+  return readShare(guide.share)
 }
 
 /** Removes a guide now. */
