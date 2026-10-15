@@ -14,6 +14,7 @@
 import type { Step } from '@wendmark/core'
 import {
   KEEP_FOR_MS,
+  addGuide,
   guidesFor,
   removeGuide,
   setPinned,
@@ -23,6 +24,16 @@ import {
 } from './guides'
 import type { RecordReply } from './messages'
 import { MAX_NOTE, shareable, type ShareSettings } from './share'
+import {
+  FILE_EXTENSION,
+  fileName,
+  fromFile,
+  fromPasted,
+  linkIfShort,
+  toFile,
+  toText,
+  type Shared,
+} from './transfer'
 import { draftOf, siteOf } from './tabs'
 
 const app = document.getElementById('app') as HTMLElement
@@ -36,6 +47,12 @@ let opened: string | null = null
 
 /** The step whose note is being written, if any. */
 let editingNote: string | null = null
+
+/** What the last share or import button did, said under the buttons. */
+let said: string | null = null
+
+/** Whether the paste box for importing is open. */
+let importing = false
 
 async function activeTabId(): Promise<number | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -91,6 +108,7 @@ function guideItem(guide: StoredGuide, now: number): HTMLLIElement {
   prepare.addEventListener('click', () => {
     opened = guide.id
     editingNote = null
+    said = null
     void render()
   })
 
@@ -114,7 +132,9 @@ async function render(): Promise<void> {
           ? 'The page reloaded during a recording. Click the Wendmark icon in the toolbar to carry on.'
           : 'Click the Wendmark icon in the toolbar on the page you want to show someone.',
       }),
+      importBox(),
     )
+    if (said) view.append(element('p', { className: 'note', text: said }))
     app.replaceChildren(view)
     return
   }
@@ -150,6 +170,9 @@ async function render(): Promise<void> {
     list.append(...guides.map((guide) => guideItem(guide, now)))
     view.append(list)
   }
+
+  view.append(importBox())
+  if (said) view.append(element('p', { className: 'note', text: said }))
 
   app.replaceChildren(view)
 }
@@ -234,6 +257,7 @@ function preview(guide: StoredGuide): DocumentFragment {
   back.addEventListener('click', () => {
     opened = null
     editingNote = null
+    said = null
     void render()
   })
 
@@ -300,7 +324,133 @@ function preview(guide: StoredGuide): DocumentFragment {
     view.append(row)
   }
 
+  if (shared) view.append(shareButtons({ origin: guide.origin, flow: shared }))
+  if (said) view.append(element('p', { className: 'note', text: said }))
+
   return view
+}
+
+function button(text: string, onClick: () => void, className?: string): HTMLButtonElement {
+  const node = element('button', { text, ...(className ? { className } : {}) })
+  node.type = 'button'
+  node.addEventListener('click', onClick)
+  return node
+}
+
+function say(text: string): void {
+  said = text
+  void render()
+}
+
+async function copy(text: string, done: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text)
+    say(done)
+  } catch {
+    say('Could not copy. Click inside this panel first, then try again.')
+  }
+}
+
+/** Saves text as a file in the person's downloads, without asking for a permission. */
+function download(name: string, text: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+  const link = element('a')
+  link.href = url
+  link.download = name
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+/** The three ways a guide leaves: what the preview shows, nothing else. */
+function shareButtons(shared: Shared): HTMLElement {
+  const box = element('div', { className: 'share' })
+  box.append(element('h2', { text: 'Share it' }))
+
+  const buttons = element('div', { className: 'share-buttons' })
+  buttons.append(
+    button(
+      'Copy link',
+      () =>
+        void (async () => {
+          const link = await linkIfShort(shared)
+          if (link) {
+            await copy(link, 'Link copied. Whoever opens it is guided on their own account.')
+          } else {
+            say('This guide is too long for a link. Save it as a file and send that instead.')
+          }
+        })(),
+      'primary',
+    ),
+    button(
+      'Copy as text',
+      () =>
+        void (async () => {
+          await copy(
+            toText(shared, await linkIfShort(shared)),
+            'Steps copied, with the link underneath. Paste them into a ticket or a chat.',
+          )
+        })(),
+    ),
+    button('Save as file', () => {
+      download(fileName(shared), toFile(shared))
+      say(`Saved as a ${FILE_EXTENSION} file in your downloads.`)
+    }),
+  )
+  box.append(buttons)
+  return box
+}
+
+/** Keeps a guide someone sent, and says where it is listed. */
+async function keep(shared: Shared | null): Promise<void> {
+  if (!shared) {
+    say('That is not a Wendmark guide, or it was made by a newer version.')
+    return
+  }
+  await addGuide(local, shared.flow, shared.origin)
+  importing = false
+  say(`Imported “${shared.flow.name}”. It is listed on ${new URL(shared.origin).host}.`)
+}
+
+function importBox(): HTMLElement {
+  const box = element('div', { className: 'import' })
+  box.append(element('h2', { text: 'Import a guide' }))
+
+  if (importing) {
+    const field = element('textarea')
+    field.rows = 3
+    field.placeholder = 'Paste a Wendmark link, or text that has one in it'
+    field.setAttribute('aria-label', 'A Wendmark link or text')
+    const actions = element('div', { className: 'actions' })
+    actions.append(
+      button('Import', () => void fromPasted(field.value).then(keep)),
+      button('Cancel', () => {
+        importing = false
+        void render()
+      }),
+    )
+    box.append(field, actions)
+    queueMicrotask(() => field.focus())
+  } else {
+    const picker = element('input')
+    picker.type = 'file'
+    picker.accept = `${FILE_EXTENSION},application/json`
+    picker.hidden = true
+    picker.addEventListener('change', () => {
+      const file = picker.files?.[0]
+      if (file) void file.text().then((text) => keep(fromFile(text)))
+    })
+    const actions = element('div', { className: 'actions' })
+    actions.append(
+      button('Paste a link', () => {
+        importing = true
+        said = null
+        void render()
+      }),
+      button('Open a file', () => picker.click()),
+    )
+    box.append(actions, picker)
+  }
+  return box
 }
 
 async function startRecording(tabId: number, button: HTMLButtonElement): Promise<void> {

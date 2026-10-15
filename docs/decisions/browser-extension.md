@@ -67,9 +67,16 @@ server — not to wendmark.dev, which is static files on GitHub Pages, and not
 to the target site. It works the same for every site, whatever that site
 does with its own addresses.
 
-A compressed guide of ten steps is roughly 1–2 KB, which chat tools and
-email carry without trouble. Above a cut-off, to be set in the first build,
-"Copy link" offers the file instead.
+What travels is `{ v: 1, origin, flow }`: the site the guide starts on and
+the flow as the preview showed it, compressed with `deflate-raw` and written
+in base64url. A ten-step guide with realistic selectors makes a link of
+under 500 characters masked, and under 600 with the words kept, because
+selectors repeat and compress well. Above **2,000 characters**, the length
+chat tools, email and older browsers all carry, "Copy link" offers the file
+instead. Text carries the link underneath when there is one, so pasting the
+text back in imports the guide; the file is the same object as JSON with
+`"format": "wendmark-guide"`. All three are read back through one strict
+check (`apps/extension/src/transfer.ts`).
 
 ### The play page
 
@@ -224,7 +231,6 @@ downloaded on every page load.
 
 ## Open questions
 
-- The size above which "Copy link" offers a file instead.
 - How steps are matched to pages in applications that route with `#`. Page
   hints already follow routes written as `#/orders`, but not `#home`,
   `#!/orders` or `#view/…`, which in those applications _is_ the page
