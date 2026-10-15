@@ -216,3 +216,49 @@ button.link {
   color: var(--teal);
   font-weight: 600;
 }
+
+/* Sharing and importing. */
+h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.share,
+.import {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.share-buttons {
+  display: grid;
+  gap: 6px;
+}
+
+.share-buttons button {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.share-buttons button.primary {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: var(--teal-ink);
+}
+
+.import textarea {
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
