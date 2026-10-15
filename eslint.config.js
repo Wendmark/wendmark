@@ -16,6 +16,7 @@ import tseslint from 'typescript-eslint'
  *   snippet     -> core, dom
  *   portal      -> core
  *   playground  -> (nothing internal)
+ *   extension   -> core, dom, snippet
  */
 export const ALLOWED_DEPENDENCIES = {
   core: [],
@@ -23,6 +24,7 @@ export const ALLOWED_DEPENDENCIES = {
   snippet: ['core', 'dom'],
   portal: ['core'],
   playground: [],
+  extension: ['core', 'dom', 'snippet'],
 }
 
 /** External packages core may import. Everything else is rejected. */
@@ -36,6 +38,7 @@ const elements = [
   { type: 'snippet', pattern: 'packages/snippet/**', partialMatch: false },
   { type: 'portal', pattern: 'apps/portal/**', partialMatch: false },
   { type: 'playground', pattern: 'apps/playground/**', partialMatch: false },
+  { type: 'extension', pattern: 'apps/extension/**', partialMatch: false },
   { type: 'tooling', pattern: 'scripts/**', partialMatch: false },
 ]
 
@@ -202,6 +205,25 @@ export default tseslint.config(
   {
     files: ['apps/portal/**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
+  },
+  // The extension runs inside other people's pages too, and stays
+  // framework-free for the same reason as the snippet.
+  {
+    files: ['apps/extension/src/**/*.ts'],
+    languageOptions: { globals: { ...globals.browser, ...globals.webextensions } },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^(react|react-dom|preact|vue|svelte|solid-js|lit|@angular/.*)(/.*)?$',
+              message: 'The extension is framework-free, like the snippet whose engine it shares.',
+            },
+          ],
+        },
+      ],
+    },
   },
 
   // ---- tooling ----

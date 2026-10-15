@@ -12,6 +12,7 @@ ends up running.
 | `packages/snippet` | **Apache-2.0** | Ships inside other companies' products   |
 | `apps/portal`      | **AGPL-3.0**   | The part someone could host as a service |
 | `apps/playground`  | **AGPL-3.0**   | Demo app for the portal                  |
+| `apps/extension`   | **Apache-2.0** | Built from the snippet's engine          |
 | Everything else    | **AGPL-3.0**   | Repository default                       |
 
 The root [`LICENSE`](LICENSE) is the AGPL, and it covers the repository unless
@@ -26,6 +27,10 @@ own. Putting a network-copyleft licence on that file would oblige every one of
 those companies to work out what it means for their application, and most
 would reasonably decline. Apache-2.0 removes the question, and its patent
 grant is what makes a legal department comfortable.
+
+**The extension is built from the same engine.** It bundles core, dom and the
+snippet, so it takes their licence: one set of terms for the code that runs in
+other people's pages, whichever way it arrives.
 
 **The portal is the part worth taking.** It is a complete product: record,
 edit, publish, serve. AGPL-3.0 means anyone may run it, change it and deploy

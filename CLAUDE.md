@@ -26,6 +26,7 @@ Wendmark **shows** users what to do. It **never does it for them**.
 | `@wendmark/snippet` (`packages/snippet`)   | core, dom                | Player, recorder, UI. Ships as one IIFE.                                         |
 | `@wendmark/portal` (`apps/portal`)         | core                     | Next.js App Router. Never imports dom or snippet code.                           |
 | `@wendmark/playground` (`apps/playground`) | —                        | Fika demo app. No Wendmark integration yet.                                      |
+| `@wendmark/extension` (`apps/extension`)   | core, dom, snippet       | Chrome MV3 extension. Portal-independent; shares the snippet's engine.           |
 
 These rules are **enforced**, not advisory:
 
@@ -74,6 +75,24 @@ The snippet runs inside customers' apps, so it must be a polite guest.
   `contenteditable` content, or keystrokes, and never store them. Password,
   email and payment fields get no special case: _no_ field values, ever.
   The core `Target` schema is strict, so unknown keys (like `value`) are rejected.
+
+## Extension constraints (`apps/extension`)
+
+The extension works without a portal and shares the snippet's engine. See
+`docs/decisions/browser-extension.md`.
+
+- **Guide, never act** holds unchanged, as does **never record typed values**.
+- **It runs on a page only when asked:** the toolbar icon (`activeTab`), or a
+  site the person grants at that moment. No `content_scripts` entry, no
+  `host_permissions`, never `<all_urls>`. `src/manifest.test.ts` enforces it.
+- **Its UI lives in a shadow root, like the snippet's,** and the content script
+  runs in Chrome's isolated world. Never inject code into the page's own world.
+- **The service worker keeps no state in variables:** Chrome stops it when
+  idle. Use `chrome.storage`.
+- The 30 KB budget does not apply: the extension is installed once.
+
+`pnpm --filter @wendmark/extension build` writes a loadable extension to
+`apps/extension/dist`; load it from `chrome://extensions` with Load unpacked.
 
 ## Commands
 
