@@ -73,6 +73,12 @@ and then plays the guide there with the teaching cursor. The person clicks
 every step. A page load picks the guide up at the step it had reached.
 Refusing opens nothing and keeps nothing.
 
+**Without the play page.** Where wendmark.dev cannot be reached — a company
+that blocks new domains, say — paste the link into **Import** in the side
+panel, then press **Play**. The link is decoded in the extension, so
+wendmark.dev is never contacted, and **Play** asks for the site and plays it
+the same way. It also plays your own guides.
+
 The extension's id is fixed by the public key in the manifest
 (`niooiillhonlnokaifmcgnohmlhbcnhb`), so the play page can address it.
 
