@@ -140,3 +140,79 @@ button:focus-visible {
   outline: 2px solid var(--teal);
   outline-offset: 2px;
 }
+
+/* The preview before sharing. */
+.back {
+  margin: 0 0 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--teal);
+  font-weight: 600;
+}
+
+.choice {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.choice legend {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.option input {
+  margin-top: 3px;
+  accent-color: var(--teal);
+}
+
+.option span {
+  display: grid;
+}
+
+.option small {
+  color: var(--muted);
+}
+
+ol.preview {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+}
+
+ol.preview li {
+  padding: 8px 10px;
+}
+
+.note-editor textarea {
+  width: 100%;
+  margin: 4px 0 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+
+button.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--teal);
+  font-weight: 600;
+}

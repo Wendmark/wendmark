@@ -106,3 +106,16 @@ describe('kept guides', () => {
     expect((await allGuides(area, NOW)).map((one) => one.id)).toEqual(['ok'])
   })
 })
+
+describe('sharing choices', () => {
+  it('are kept with the guide, read defensively', async () => {
+    const { setShare, shareOf } = await import('./guides')
+    const area = memoryArea()
+    const kept = await addGuide(area, flow, 'https://a.example', NOW)
+    expect(shareOf(kept)).toEqual({ labels: 'none', removed: [], notes: {} })
+
+    await setShare(area, kept.id, { labels: 'all', removed: ['s1'], notes: { s1: 'hi' } }, NOW)
+    const [again] = await allGuides(area, NOW)
+    expect(again && shareOf(again)).toEqual({ labels: 'all', removed: ['s1'], notes: { s1: 'hi' } })
+  })
+})

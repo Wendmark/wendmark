@@ -63,6 +63,9 @@ importers:
       '@types/chrome':
         specifier: ^0.3.5
         version: 0.3.5
+      jsdom:
+        specifier: ^30.1.0
+        version: 30.1.0
       tsup:
         specifier: ^8.5
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.28)(tsx@4.23.15)(typescript@5.9.3)

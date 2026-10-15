@@ -13,6 +13,8 @@ export default defineConfig([
     outExtension: () => ({ js: '.js' }),
     target: 'es2022',
     platform: 'browser',
+    // No size budget here (it is installed once), but no reason to ship more.
+    minify: true,
     noExternal: [/.*/],
     publicDir: 'public',
     // Both builds run at once, so neither cleans dist/; the build script
@@ -28,6 +30,8 @@ export default defineConfig([
     outExtension: () => ({ js: '.js' }),
     target: 'es2022',
     platform: 'browser',
+    // No size budget here (it is installed once), but no reason to ship more.
+    minify: true,
     noExternal: [/.*/],
     clean: false,
   },
