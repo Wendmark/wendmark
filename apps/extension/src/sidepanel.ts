@@ -3,6 +3,10 @@
  * icon. It lists the guides kept for the site in the current tab, with
  * Record to make another, and Pin and Delete for each.
  *
+ * "Play" plays a guide in the current tab, asking first for access to its
+ * site, so a guide can be followed without the play page on wendmark.dev —
+ * for an imported link, or where that site is blocked.
+ *
  * "Prepare to share" opens a guide's preview: exactly what would leave the
  * browser, from the same function sharing uses (share.ts), with the
  * choices that change it — masking, steps left out, notes — beside it.
@@ -15,7 +19,7 @@ import type { Step } from '@wendmark/core'
 import {
   KEEP_FOR_MS,
   addGuide,
-  guidesFor,
+  allGuides,
   removeGuide,
   setPinned,
   setShare,
@@ -23,6 +27,7 @@ import {
   type StoredGuide,
 } from './guides'
 import type { RecordReply } from './messages'
+import { sitePattern, startUrl } from './play'
 import { MAX_NOTE, shareable, type ShareSettings } from './share'
 import {
   FILE_EXTENSION,
@@ -34,7 +39,7 @@ import {
   toText,
   type Shared,
 } from './transfer'
-import { draftOf, siteOf } from './tabs'
+import { draftOf, setPlaying, siteOf } from './tabs'
 
 const app = document.getElementById('app') as HTMLElement
 const local = chrome.storage.local
@@ -79,7 +84,43 @@ function whenRecorded(guide: StoredGuide, now: number): string {
   return `${age} · kept ${left} more day${left === 1 ? '' : 's'}`
 }
 
-function guideItem(guide: StoredGuide, now: number): HTMLLIElement {
+/**
+ * Plays a guide in this tab: on this page if it is on the guide's site,
+ * otherwise by opening the site first. The background worker carries it
+ * across page loads, as it does a guide started from the play page.
+ */
+async function playGuide(guide: StoredGuide, tabId: number): Promise<void> {
+  const host = new URL(guide.origin).host
+  // The first thing the click does: Chrome asks for a site only then.
+  const granted = await chrome.permissions.request({ origins: [sitePattern(guide.origin)] })
+  if (!granted) {
+    say(`Wendmark needs access to ${host} to point at things there. Nothing was changed.`)
+    return
+  }
+  const shared = { origin: guide.origin, flow: guide.flow }
+  await setPlaying(tabId, { shared, stepIndex: 0 })
+
+  const tab = await chrome.tabs.get(tabId)
+  const onSite = tab.url ? new URL(tab.url).origin === guide.origin : false
+  if (!onSite) {
+    await chrome.tabs.update(tabId, { url: startUrl(shared) })
+    say(`Opening ${host}. Follow the cursor; you do the clicking.`)
+    return
+  }
+  // Already on the site: tell the content script, or put it there.
+  const resumed = await chrome.tabs
+    .sendMessage(tabId, { type: 'wendmark:resume' })
+    .then(() => true)
+    .catch(() => false)
+  if (!resumed) {
+    await chrome.scripting
+      .executeScript({ target: { tabId }, files: ['content.js'] })
+      .catch(() => undefined)
+  }
+  say('Playing on the page. Follow the cursor; you do the clicking.')
+}
+
+function guideItem(guide: StoredGuide, now: number, tabId: number, here: boolean): HTMLLIElement {
   const item = element('li')
   const steps = guide.flow.steps.length
   item.append(
@@ -91,6 +132,14 @@ function guideItem(guide: StoredGuide, now: number): HTMLLIElement {
   )
 
   const actions = element('div', { className: 'actions' })
+  const play = element('button', {
+    className: 'play',
+    text: here ? 'Play' : `Play on ${new URL(guide.origin).host}`,
+  })
+  play.type = 'button'
+  play.addEventListener('click', () => void playGuide(guide, tabId))
+  actions.append(play)
+
   const pin = element('button', { text: guide.pinned ? 'Pinned' : 'Pin' })
   pin.type = 'button'
   pin.setAttribute('aria-pressed', String(guide.pinned))
@@ -122,30 +171,37 @@ async function render(): Promise<void> {
   const site = tabId === null ? null : await siteOf(tabId)
   const now = Date.now()
   const view = document.createDocumentFragment()
+  const everything = await allGuides(local, now)
 
-  if (tabId === null || site === null) {
+  const open = everything.find((guide) => guide.id === opened)
+  if (open) {
+    app.replaceChildren(preview(open))
+    return
+  }
+  opened = null
+
+  if (site === null) {
     const unfinished = tabId === null ? null : await draftOf(tabId)
     view.append(
       element('p', {
         className: 'hint',
         text: unfinished
           ? 'The page reloaded during a recording. Click the Wendmark icon in the toolbar to carry on.'
-          : 'Click the Wendmark icon in the toolbar on the page you want to show someone.',
+          : 'To record, click the Wendmark icon in the toolbar on the page you want to show someone.',
       }),
-      importBox(),
     )
+    if (tabId !== null && everything.length > 0) {
+      view.append(guideList('Your guides', everything, now, tabId, false))
+    }
+    view.append(importBox())
     if (said) view.append(element('p', { className: 'note', text: said }))
     app.replaceChildren(view)
     return
   }
-
-  const guides = await guidesFor(local, site, now)
-  const open = guides.find((guide) => guide.id === opened)
-  if (open) {
-    app.replaceChildren(preview(open))
-    return
-  }
-  opened = null
+  // A site is known only for a tab, so tabId is not null here.
+  const tab = tabId as number
+  const here = everything.filter((guide) => guide.origin === site)
+  const elsewhere = everything.filter((guide) => guide.origin !== site)
 
   view.append(
     element('h1', { text: 'Guides on this site' }),
@@ -154,11 +210,11 @@ async function render(): Promise<void> {
 
   const record = element('button', { className: 'record', text: 'Record a process' })
   record.type = 'button'
-  record.addEventListener('click', () => void startRecording(tabId, record))
+  record.addEventListener('click', () => void startRecording(tab, record))
   view.append(record)
   if (note) view.append(element('p', { className: 'note', text: note }))
 
-  if (guides.length === 0) {
+  if (here.length === 0) {
     view.append(
       element('p', {
         className: 'note',
@@ -167,14 +223,32 @@ async function render(): Promise<void> {
     )
   } else {
     const list = element('ul')
-    list.append(...guides.map((guide) => guideItem(guide, now)))
+    list.append(...here.map((guide) => guideItem(guide, now, tab, true)))
     view.append(list)
+  }
+
+  if (elsewhere.length > 0) {
+    view.append(guideList('Guides for other sites', elsewhere, now, tab, false))
   }
 
   view.append(importBox())
   if (said) view.append(element('p', { className: 'note', text: said }))
 
   app.replaceChildren(view)
+}
+
+function guideList(
+  title: string,
+  guides: StoredGuide[],
+  now: number,
+  tabId: number,
+  here: boolean,
+): HTMLElement {
+  const box = element('div', { className: 'others' })
+  const list = element('ul')
+  list.append(...guides.map((guide) => guideItem(guide, now, tabId, here)))
+  box.append(element('h2', { text: title }), list)
+  return box
 }
 
 /** Saves a change to a guide's sharing choices; storage redraws the panel. */

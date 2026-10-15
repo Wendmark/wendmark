@@ -96,6 +96,11 @@ function run(): void {
       record()
       reply({ ok: true })
     }
+    // The side panel started a guide on this page: ask for it.
+    if (message?.type === 'wendmark:resume') {
+      announce()
+      reply({ ok: true })
+    }
     return false
   })
 
@@ -119,9 +124,15 @@ function run(): void {
     })
   }
 
-  // Say where we are, and carry on with whatever a page load interrupted: a
-  // recording, or a shared guide being played.
-  void send({ type: 'wendmark:ready', origin: location.origin }).then((answer) => {
+  /**
+   * Says where we are, and carries on with whatever is waiting: a guide to
+   * play, or a recording a page load interrupted.
+   */
+  function announce(): void {
+    void send({ type: 'wendmark:ready', origin: location.origin }).then(carryOn)
+  }
+
+  function carryOn(answer: unknown): void {
     const reply = (answer ?? {}) as {
       draft?: unknown
       play?: { flow?: unknown; stepIndex?: unknown }
@@ -136,5 +147,7 @@ function run(): void {
     }
     const draft = readDraft(reply.draft)
     if (draft && draft.steps.length > 0) record(draft)
-  })
+  }
+
+  announce()
 }

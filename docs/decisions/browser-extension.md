@@ -93,7 +93,12 @@ relies on one window reaching another — the `window.opener` failure in
 [author-mode.md](author-mode.md) cannot happen here.
 
 Because the guide is in the page's address, `/play` carries **no analytics
-or third-party scripts**, and says so. A company that would rather not
+or third-party scripts**, and says so.
+
+The play page is a convenience, not a dependency. Some companies block newly
+registered domains, so the side panel also takes a pasted link (**Import**)
+and plays it (**Play**): the link is decoded inside the extension and
+wendmark.dev is never contacted. A company that would rather not
 depend on wendmark.dev can host its own copy; letting the extension trust
 more than one play page is a later option.
 
