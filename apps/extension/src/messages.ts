@@ -4,14 +4,20 @@
  *   content script → worker   ready         "running on this site"
  *                             draft         the recording so far, after every change
  *                             draft-closed  the recorder was closed
+ *                             progress      a played guide reached this step
+ *                             play-ended    it finished or was stopped
  *   side panel → worker       record        "start recording in this tab"
  *   worker → content script   start-recording
+ *
+ * The play page on wendmark.dev talks to the worker too, from outside the
+ * extension; those messages are in play.ts.
  *
  * Messages from a content script come out of a web page, so the worker
  * never trusts their shape: every message is read with `readMessage`, which
  * returns null for anything it does not recognise and drops unknown fields.
  */
 import type { Step } from '@wendmark/core'
+import type { Flow } from '@wendmark/core'
 import type { Draft } from '@wendmark/snippet/engine'
 
 export interface ReadyMessage {
@@ -38,12 +44,31 @@ export interface StartRecordingMessage {
   type: 'wendmark:start-recording'
 }
 
-export type Message =
-  ReadyMessage | DraftMessage | DraftClosedMessage | RecordMessage | StartRecordingMessage
+export interface ProgressMessage {
+  type: 'wendmark:progress'
+  stepIndex: number
+}
 
-/** The worker's answer to `ready`: a recording to carry on with, if any. */
+export interface PlayEndedMessage {
+  type: 'wendmark:play-ended'
+}
+
+export type Message =
+  | ReadyMessage
+  | DraftMessage
+  | DraftClosedMessage
+  | RecordMessage
+  | StartRecordingMessage
+  | ProgressMessage
+  | PlayEndedMessage
+
+/**
+ * The worker's answer to `ready`: a recording to carry on with, or a shared
+ * guide to play from a step, if either.
+ */
 export interface ReadyReply {
   draft: Draft | null
+  play: { flow: Flow; stepIndex: number } | null
 }
 
 /** The worker's answer to `record`. */
@@ -73,7 +98,14 @@ export function readMessage(value: unknown): Message | null {
     }
     case 'wendmark:draft-closed':
     case 'wendmark:start-recording':
+    case 'wendmark:play-ended':
       return { type: value.type }
+    case 'wendmark:progress':
+      return typeof value.stepIndex === 'number' &&
+        Number.isInteger(value.stepIndex) &&
+        value.stepIndex >= 0
+        ? { type: value.type, stepIndex: value.stepIndex }
+        : null
     case 'wendmark:record':
       return typeof value.tabId === 'number' && Number.isInteger(value.tabId)
         ? { type: value.type, tabId: value.tabId }

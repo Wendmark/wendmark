@@ -25,5 +25,9 @@
   },
   "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
-  "minimum_chrome_version": "120"
+  "minimum_chrome_version": "120",
+  "externally_connectable": {
+    "matches": ["https://wendmark.dev/*"]
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2Bk6C/baaEn6ZcrHZEJJTqfaktI23OuZbzL+oG5wj6N32H6gRAA2NEM95Xu/vNJBeszEhWaCWtvuUwyd6YYRyyzL830ZFkUup+6pbZ1UFgDUFi6eNUUgtOgNQzoIn/9VlMN/WJi2lcwfbWDesSldDxkMAurlX5KdshfBvQUveOAOjYtJq5ofv9vmufYTpoiqMLSYzffU9mchE63UXuVWEm1dXqmt0DSEu5rH8DmqwzXoGf6D58KNZriXnkn7PzIa/nUkkrxwVfKv0CzDP7GOAMzii2p2rWqSoc26eLnT7oc3tw8kc78vO716dkB+VBMGXcBGd8gHZaZqmY0z2FegUQIDAQAB"
 }

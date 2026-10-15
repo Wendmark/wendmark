@@ -9,6 +9,9 @@
  *   tab's content script.
  * - The content script reports which site it is on and the recording in
  *   progress, kept per tab (tabs.ts) so a page load does not lose it.
+ * - The play page on wendmark.dev hands over shared guides (play.ts). A
+ *   guide being played is re-injected on every page load on its site,
+ *   which the person allowed on the start page.
  *
  * Chrome stops the worker whenever it is idle and starts it again for the
  * next event, so nothing here lives in a variable between events, and every
@@ -16,7 +19,20 @@
  * registers it again before the event is delivered.
  */
 import { readMessage, type ReadyReply, type RecordReply } from './messages'
-import { clearDraft, draftOf, forgetSite, forgetTab, setDraft, setSite } from './tabs'
+import { PLAY_ORIGIN, readExternalMessage } from './play'
+import {
+  clearDraft,
+  clearPlaying,
+  draftOf,
+  forgetSite,
+  forgetTab,
+  playingIn,
+  setDraft,
+  setPlaying,
+  setSite,
+  setWaitingToStart,
+} from './tabs'
+import { fromLink } from './transfer'
 
 /** The file the build writes for the content script. */
 const CONTENT_SCRIPT = 'content.js'
@@ -47,7 +63,15 @@ chrome.runtime.onMessage.addListener((raw, sender, reply) => {
         await setSite(tabId, message.origin)
         void chrome.action.setBadgeBackgroundColor({ tabId, color: '#0f766e' })
         void chrome.action.setBadgeText({ tabId, text: 'on' })
-        const answer: ReadyReply = { draft: await draftOf(tabId) }
+        const playing = await playingIn(tabId)
+        const answer: ReadyReply = {
+          draft: await draftOf(tabId),
+          // Only on the site the guide is for.
+          play:
+            playing && playing.shared.origin === message.origin
+              ? { flow: playing.shared.flow, stepIndex: playing.stepIndex }
+              : null,
+        }
         reply(answer)
       })()
       // Answering after an await: keep the channel open.
@@ -58,6 +82,16 @@ chrome.runtime.onMessage.addListener((raw, sender, reply) => {
       return false
     case 'wendmark:draft-closed':
       if (tabId !== undefined) void clearDraft(tabId)
+      return false
+    case 'wendmark:progress':
+      if (tabId !== undefined) {
+        void playingIn(tabId).then(
+          (playing) => playing && setPlaying(tabId, { ...playing, stepIndex: message.stepIndex }),
+        )
+      }
+      return false
+    case 'wendmark:play-ended':
+      if (tabId !== undefined) void clearPlaying(tabId)
       return false
     case 'wendmark:record': {
       if (!fromExtension) return false
@@ -74,13 +108,52 @@ chrome.runtime.onMessage.addListener((raw, sender, reply) => {
   }
 })
 
+// From the play page on wendmark.dev, and nowhere else: the manifest lets
+// only that site send these, and this checks again.
+chrome.runtime.onMessageExternal.addListener((raw, sender, reply) => {
+  if (sender.origin !== PLAY_ORIGIN) return false
+  const message = readExternalMessage(raw)
+  if (!message) return false
+
+  if (message.type === 'wendmark:hello') {
+    reply({ ok: true, version: chrome.runtime.getManifest().version })
+    return false
+  }
+
+  const tabId = sender.tab?.id
+  void (async () => {
+    const shared = await fromLink(message.link)
+    if (!shared || tabId === undefined) {
+      reply({ ok: false })
+      return
+    }
+    // The start page asks for the site; it needs a click on a page of ours.
+    await setWaitingToStart(tabId, shared)
+    reply({ ok: true })
+    await chrome.tabs.update(tabId, { url: chrome.runtime.getURL('start.html') })
+  })()
+  return true
+})
+
 // A new page in the tab means a fresh document: the content script there is
 // gone, so the badge and the site go too. A recording in progress stays, to
-// be picked up when the icon is clicked again.
-chrome.tabs.onUpdated.addListener((tabId, change) => {
-  if (change.status !== 'loading') return
-  void chrome.action.setBadgeText({ tabId, text: '' })
-  void forgetSite(tabId)
+// be picked up when the icon is clicked again. A guide being played carries
+// on by itself, on the site the person allowed.
+chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
+  if (change.status === 'loading') {
+    void chrome.action.setBadgeText({ tabId, text: '' })
+    void forgetSite(tabId)
+    return
+  }
+  if (change.status !== 'complete') return
+  void (async () => {
+    const playing = await playingIn(tabId)
+    if (!playing || !tab.url) return
+    if (new URL(tab.url).origin !== playing.shared.origin) return
+    await chrome.scripting
+      .executeScript({ target: { tabId }, files: [CONTENT_SCRIPT] })
+      .catch(() => undefined)
+  })()
 })
 
 chrome.tabs.onRemoved.addListener((tabId) => {

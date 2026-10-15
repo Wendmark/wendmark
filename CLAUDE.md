@@ -85,6 +85,8 @@ The extension works without a portal and shares the snippet's engine. See
 - **It runs on a page only when asked:** the toolbar icon (`activeTab`), or a
   site the person grants at that moment. No `content_scripts` entry, no
   `host_permissions`, never `<all_urls>`. `src/manifest.test.ts` enforces it.
+- **Only `https://wendmark.dev` may hand it guides** (`externally_connectable`),
+  and a site is granted only from a click on the extension's start page.
 - **Its UI lives in a shadow root, like the snippet's,** and the content script
   runs in Chrome's isolated world. Never inject code into the page's own world.
 - **The service worker keeps no state in variables:** Chrome stops it when

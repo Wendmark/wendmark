@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import manifest from '../public/manifest.json'
+import { EXTENSION_ID } from './play'
 
 /**
  * The permission promise, as a test: the extension runs on a site only when
@@ -26,6 +27,21 @@ describe('the manifest', () => {
   it('runs in no page until asked', () => {
     expect(manifest).not.toHaveProperty('content_scripts')
     expect(JSON.stringify(manifest)).not.toContain('<all_urls>')
+  })
+
+  it('takes guides only from the play page on wendmark.dev', () => {
+    expect(manifest.externally_connectable).toEqual({ matches: ['https://wendmark.dev/*'] })
+  })
+
+  it('has a fixed id, so the play page can find it', async () => {
+    // The id is the first 128 bits of the SHA-256 of the public key, as a–p.
+    const der = Uint8Array.from(atob(manifest.key), (char) => char.charCodeAt(0))
+    const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', der))
+    const id = [...hash.slice(0, 16)]
+      .flatMap((byte) => [byte >> 4, byte & 15])
+      .map((nibble) => String.fromCharCode(97 + nibble))
+      .join('')
+    expect(id).toBe(EXTENSION_ID)
   })
 
   it('is Manifest V3, with a module service worker', () => {
