@@ -5,9 +5,9 @@ import { defineConfig } from 'tsup'
 // chrome://extensions with "Load unpacked".
 export default defineConfig([
   {
-    // The service worker: runs in Chrome, not in any page. The manifest
-    // declares it as a module, so it is built as one.
-    entry: { background: 'src/background.ts' },
+    // The service worker, which runs in Chrome rather than in any page, and
+    // the side panel's script. Both are loaded as modules.
+    entry: { background: 'src/background.ts', sidepanel: 'src/sidepanel.ts' },
     format: ['esm'],
     outDir: 'dist',
     outExtension: () => ({ js: '.js' }),

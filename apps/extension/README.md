@@ -21,12 +21,27 @@ press the reload arrow on the extension's card.
 
 ## How it is put together
 
-| File                   | Runs in                     | What it does                                                    |
-| ---------------------- | --------------------------- | --------------------------------------------------------------- |
-| `public/manifest.json` | —                           | What the extension is and the permissions it asks for           |
-| `src/background.ts`    | Chrome (the service worker) | Hears the toolbar click, injects the content script, sets badge |
-| `src/content.ts`       | The page, isolated world    | Where the recorder and player will run                          |
-| `src/messages.ts`      | Both                        | The messages between them, checked on arrival                   |
+| File                   | Runs in                     | What it does                                                         |
+| ---------------------- | --------------------------- | -------------------------------------------------------------------- |
+| `public/manifest.json` | —                           | What the extension is and the permissions it asks for                |
+| `src/background.ts`    | Chrome (the service worker) | Toolbar click: opens the side panel, injects the content script      |
+| `src/content.ts`       | The page, isolated world    | The recorder and player, from `@wendmark/snippet/engine`             |
+| `src/sidepanel.ts`     | The side panel              | Guides for the current site; Record, Pin, Delete                     |
+| `src/guides.ts`        | Anywhere                    | Guides in `chrome.storage.local`, tidied after 30 days unless pinned |
+| `src/tabs.ts`          | Worker, side panel          | Per-tab state in `chrome.storage.session`: the site, a recording     |
+| `src/messages.ts`      | All of them                 | The messages between them, checked on arrival                        |
+
+### Recording a guide
+
+1. Click the Wendmark icon on the page. The side panel opens, and the
+   content script is injected into that tab.
+2. Press **Record a process** in the side panel. The recorder panel appears
+   on the page, the same one the portal's author mode uses.
+3. Click through the process. If the page reloads, the recording is kept;
+   click the icon again to carry on (the extension's access to a tab ends
+   when it navigates, and only a click grants it again).
+4. Name it and press **Save**. It is kept in this browser, listed in the
+   side panel, for 30 days unless pinned.
 
 It runs on a page only when its icon is clicked (`activeTab`). There is no
 `content_scripts` entry and no host permission at install;

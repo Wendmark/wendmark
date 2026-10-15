@@ -20,7 +20,10 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["activeTab", "scripting", "storage"],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "minimum_chrome_version": "120"
 }

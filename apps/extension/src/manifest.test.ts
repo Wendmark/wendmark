@@ -8,7 +8,12 @@ import manifest from '../public/manifest.json'
  */
 describe('the manifest', () => {
   it('asks only for what clicking the icon needs', () => {
-    expect([...manifest.permissions].sort()).toEqual(['activeTab', 'scripting', 'storage'])
+    expect([...manifest.permissions].sort()).toEqual([
+      'activeTab',
+      'scripting',
+      'sidePanel',
+      'storage',
+    ])
   })
 
   it('grants no site at install', () => {
