@@ -58,11 +58,11 @@ More: https://wendmark.dev/extension/
 | Screenshots, 1280×800     | `store/images/screenshot-1..4.jpg` |
 | Small promo tile, 440×280 | `store/images/promo-small.jpg`     |
 
-Upload the JPEGs: the store's form refused the PNGs of the same images,
-though they matched its stated format. The store icon is the mark at 96×96
-in a transparent 128×128 square at 72 dpi, as the image guidelines ask;
-`public/icons/icon-128.png` fills the square and carries a 1200 dpi tag, and
-the form refused it.
+Upload the JPEGs: the form would not take the PNGs of the same images at
+first, though they matched its stated format. The store icon is the mark at
+96×96 in a transparent 128×128 square at 72 dpi, as the image guidelines
+ask; `public/icons/icon-128.png` fills the square, carries a 1200 dpi tag,
+and the form reported a size error for it.
 
 The screenshots are captures of the real extension, at twice the size and
 scaled down, laid out with a headline each. Retake them when the interface
