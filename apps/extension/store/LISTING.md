@@ -101,7 +101,9 @@ changes: the review compares the listing with what the extension does.
 
 ## After the first upload
 
-The store gives the item its own id, different from the development id in the
-manifest's `key`. Add it to `EXTENSION_IDS` on the play page
+The store's id for Wendmark is **`lpkmodjgcejabaikcifkfhnmpdigpipb`**
+(listing: https://chromewebstore.google.com/detail/lpkmodjgcejabaikcifkfhnmpdigpipb,
+live once approved). It differs from the development id in the manifest's
+`key`. Add it to `EXTENSION_IDS` on the play page
 (Wendmark/wendmark.dev, `src/pages/play.astro`), and point the `/extension/`
 page's install button at the store listing.
