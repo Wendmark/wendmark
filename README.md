@@ -88,16 +88,36 @@ does **not** protect.
 
 Early, and honest about it: **not yet released or versioned**, and the API may
 still move. That said, the whole path works end to end — record, edit, publish,
-target, play, resume — and it is covered by about 900 tests.
+target, play, resume — and it is covered by about 1,000 tests.
 
-| Working                                                           | Not yet                                                                                             |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Recording from inside your own app, paired through the portal     | [Problem reports](https://github.com/Wendmark/wendmark/issues/47) — users retracing what went wrong |
-| Editing, reordering, rewording, publishing with frozen versions   | A browser extension, for apps that cannot add a script tag                                          |
-| URL targeting, listed/hidden processes, pause and restore         | Analytics, flow-health checks, multi-team                                                           |
-| The launcher, progress that survives a reload, shadow DOM support | A hosted service                                                                                    |
-| Email-and-password sign-in, optional OIDC single sign-on          |                                                                                                     |
-| Self-hosting with Docker Compose                                  |                                                                                                     |
+| Working                                                               | Not yet                                                                                       |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Recording from inside your own app, paired through the portal         | Frames from other sites inside a page ([#93](https://github.com/Wendmark/wendmark/issues/93)) |
+| Editing, reordering, rewording, publishing with frozen versions       | Firefox and Safari for the extension                                                          |
+| URL targeting, listed/hidden processes, pause and restore             | Analytics, flow-health checks, multi-team                                                     |
+| The launcher, progress that survives a reload, shadow DOM support     | A hosted service                                                                              |
+| Problem reports, replayable in your app with the teaching cursor      |                                                                                               |
+| A Chrome extension: record, share a link, follow it, no portal needed |                                                                                               |
+| Email-and-password sign-in, optional OIDC single sign-on              |                                                                                               |
+| Self-hosting with Docker Compose                                      |                                                                                               |
+
+## Wendmark for Chrome
+
+For the smaller, more frequent need: showing a colleague how to do something
+in a web app neither of you can add a script tag to. Click the Wendmark icon,
+record a few clicks, check what will be shared, and copy a link. Whoever opens
+it is guided through the same steps in their own signed-in session, clicking
+every step themselves.
+
+No account and no server: guides stay in the browser, and a shared guide
+travels after the `#` in its link. It runs on a page only when asked, and
+never records what anyone types. It shares the snippet's engine, in
+[`apps/extension`](apps/extension), under Apache-2.0.
+
+It is in review for the Chrome Web Store. Until it is listed,
+[build it from source](apps/extension/README.md);
+[wendmark.dev/extension](https://wendmark.dev/extension/) has the details, and
+[the decision record](docs/decisions/browser-extension.md) the reasoning.
 
 ## Try it
 
