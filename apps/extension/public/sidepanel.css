@@ -262,3 +262,19 @@ h2 {
   font: inherit;
   resize: vertical;
 }
+
+.others {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.others ul {
+  margin-top: 0;
+}
+
+.actions button.play {
+  border-color: var(--teal);
+  color: var(--teal);
+  font-weight: 600;
+}

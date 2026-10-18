@@ -8,6 +8,7 @@
  *                             play-ended    it finished or was stopped
  *   side panel → worker       record        "start recording in this tab"
  *   worker → content script   start-recording
+ *   side panel → content      resume        "ask again: is there a guide to play?"
  *
  * The play page on wendmark.dev talks to the worker too, from outside the
  * extension; those messages are in play.ts.
@@ -44,6 +45,10 @@ export interface StartRecordingMessage {
   type: 'wendmark:start-recording'
 }
 
+export interface ResumeMessage {
+  type: 'wendmark:resume'
+}
+
 export interface ProgressMessage {
   type: 'wendmark:progress'
   stepIndex: number
@@ -59,6 +64,7 @@ export type Message =
   | DraftClosedMessage
   | RecordMessage
   | StartRecordingMessage
+  | ResumeMessage
   | ProgressMessage
   | PlayEndedMessage
 
@@ -98,6 +104,7 @@ export function readMessage(value: unknown): Message | null {
     }
     case 'wendmark:draft-closed':
     case 'wendmark:start-recording':
+    case 'wendmark:resume':
     case 'wendmark:play-ended':
       return { type: value.type }
     case 'wendmark:progress':
