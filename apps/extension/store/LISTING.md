@@ -17,7 +17,7 @@ The package: `pnpm --filter @wendmark/extension package`, which writes
 
 > Show someone how to do something in a web app: record the clicks once, share a link, and they are guided through it.
 
-**Category:** Productivity → Workflow & Planning
+**Category:** Workflow & Planning
 
 **Language:** English
 
@@ -54,9 +54,15 @@ More: https://wendmark.dev/extension/
 
 | Field                     | File                               |
 | ------------------------- | ---------------------------------- |
-| Store icon, 128×128       | `public/icons/icon-128.png`        |
-| Screenshots, 1280×800     | `store/images/screenshot-1..4.png` |
-| Small promo tile, 440×280 | `store/images/promo-small.png`     |
+| Store icon, 128×128       | `store/images/store-icon-128.png`  |
+| Screenshots, 1280×800     | `store/images/screenshot-1..4.jpg` |
+| Small promo tile, 440×280 | `store/images/promo-small.jpg`     |
+
+Upload the JPEGs: the store's form refused the PNGs of the same images,
+though they matched its stated format. The store icon is the mark at 96×96
+in a transparent 128×128 square at 72 dpi, as the image guidelines ask;
+`public/icons/icon-128.png` fills the square and carries a 1200 dpi tag, and
+the form refused it.
 
 The screenshots are captures of the real extension, at twice the size and
 scaled down, laid out with a headline each. Retake them when the interface
@@ -98,6 +104,12 @@ changes: the review compares the listing with what the extension does.
 **Visibility:** start with **Unlisted** (only people with the link can install it), try it, then switch to **Public**.
 
 **Regions:** all regions.
+
+## Status
+
+Version 0.1.0 submitted for review on 18 October 2026, unlisted, all
+regions. Free of charge. Contact email set and verified on the developer
+account's Settings page, which the store requires before submitting.
 
 ## After the first upload
 
