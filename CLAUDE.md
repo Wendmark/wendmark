@@ -95,6 +95,9 @@ The extension works without a portal and shares the snippet's engine. See
 
 `pnpm --filter @wendmark/extension build` writes a loadable extension to
 `apps/extension/dist`; load it from `chrome://extensions` with Load unpacked.
+`pnpm --filter @wendmark/extension package` writes the Chrome Web Store zip to
+`apps/extension/release/` (the development `key` taken out). The store listing
+text and images are in `apps/extension/store/`.
 
 ## Commands
 

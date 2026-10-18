@@ -228,7 +228,12 @@ export default tseslint.config(
 
   // ---- tooling ----
   {
-    files: ['scripts/**', '*.{js,mjs,ts}', '**/*.config.{js,mjs,ts}'],
+    files: [
+      'scripts/**',
+      'apps/extension/scripts/**',
+      '*.{js,mjs,ts}',
+      '**/*.config.{js,mjs,ts}',
+    ],
     languageOptions: { globals: globals.node },
   },
 

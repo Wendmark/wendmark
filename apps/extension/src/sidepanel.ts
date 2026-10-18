@@ -166,7 +166,18 @@ function guideItem(guide: StoredGuide, now: number, tabId: number, here: boolean
   return item
 }
 
+/**
+ * Each redraw's number. Redraws overlap — storage changes, tab switches —
+ * and the one that started last must win, or a slower, older one would put
+ * back what was on screen before.
+ */
+let latest = 0
+
 async function render(): Promise<void> {
+  const mine = ++latest
+  const show = (node: Node): void => {
+    if (mine === latest) app.replaceChildren(node)
+  }
   const tabId = await activeTabId()
   const site = tabId === null ? null : await siteOf(tabId)
   const now = Date.now()
@@ -175,7 +186,7 @@ async function render(): Promise<void> {
 
   const open = everything.find((guide) => guide.id === opened)
   if (open) {
-    app.replaceChildren(preview(open))
+    show(preview(open))
     return
   }
   opened = null
@@ -195,7 +206,7 @@ async function render(): Promise<void> {
     }
     view.append(importBox())
     if (said) view.append(element('p', { className: 'note', text: said }))
-    app.replaceChildren(view)
+    show(view)
     return
   }
   // A site is known only for a tab, so tabId is not null here.
@@ -234,7 +245,7 @@ async function render(): Promise<void> {
   view.append(importBox())
   if (said) view.append(element('p', { className: 'note', text: said }))
 
-  app.replaceChildren(view)
+  show(view)
 }
 
 function guideList(
