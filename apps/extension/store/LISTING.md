@@ -107,15 +107,13 @@ changes: the review compares the listing with what the extension does.
 
 ## Status
 
-Version 0.1.0 submitted for review on 18 October 2026, unlisted, all
-regions. Free of charge. Contact email set and verified on the developer
-account's Settings page, which the store requires before submitting.
+Published: https://chromewebstore.google.com/detail/wendmark/lpkmodjgcejabaikcifkfhnmpdigpipb. Version 0.1.0, free of charge, all regions. Submitted
+on 18 October 2026, published by 19 October 2026.
 
 ## After the first upload
 
 The store's id for Wendmark is **`lpkmodjgcejabaikcifkfhnmpdigpipb`**
-(listing: https://chromewebstore.google.com/detail/lpkmodjgcejabaikcifkfhnmpdigpipb,
-live once approved). It differs from the development id in the manifest's
+(listing: https://chromewebstore.google.com/detail/wendmark/lpkmodjgcejabaikcifkfhnmpdigpipb). It differs from the development id in the manifest's
 `key`. Add it to `EXTENSION_IDS` on the play page
 (Wendmark/wendmark.dev, `src/pages/play.astro`), and point the `/extension/`
 page's install button at the store listing.
