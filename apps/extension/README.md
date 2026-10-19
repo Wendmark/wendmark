@@ -7,6 +7,9 @@ for what it is for and why it is built this way.
 
 Licensed under Apache-2.0, like the snippet it shares its engine with.
 
+**Install it from the Chrome Web Store:**
+[Wendmark](https://chromewebstore.google.com/detail/wendmark/lpkmodjgcejabaikcifkfhnmpdigpipb). The rest of this page is for building it yourself.
+
 ## Try it
 
 ```bash

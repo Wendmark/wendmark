@@ -114,8 +114,8 @@ travels after the `#` in its link. It runs on a page only when asked, and
 never records what anyone types. It shares the snippet's engine, in
 [`apps/extension`](apps/extension), under Apache-2.0.
 
-It is in review for the Chrome Web Store. Until it is listed,
-[build it from source](apps/extension/README.md);
+**[Add it to Chrome](https://chromewebstore.google.com/detail/wendmark/lpkmodjgcejabaikcifkfhnmpdigpipb)** from the Chrome Web Store, or
+[build it from source](apps/extension/README.md).
 [wendmark.dev/extension](https://wendmark.dev/extension/) has the details, and
 [the decision record](docs/decisions/browser-extension.md) the reasoning.
 
