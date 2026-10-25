@@ -54,6 +54,14 @@ people using it must be able to get your modified source.
 **Contributing.** Your contribution carries the licence of the directory it
 lands in. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Third-party media
+
+The music in [`docs/images/intro.mp4`](docs/images/intro.mp4) is "Happy
+Beats / Business Moves Vol. 12" by Sascha Ende ([ende.app](https://ende.app/en)),
+under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). It is not
+covered by the AGPL; the rest of the video is. Credit it as "Music: Sascha
+Ende, ende.app (CC BY 4.0)" wherever the video is shown.
+
 ## Paid features, if they ever exist
 
 Any commercial features would live in their own directory under their own
