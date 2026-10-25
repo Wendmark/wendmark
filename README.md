@@ -12,6 +12,11 @@
   <img alt="Snippet size" src="https://img.shields.io/badge/snippet-16.1%20KB%20gzipped-0e5c57">
 </p>
 
+<p align="center">
+  <a href="docs/images/intro.mp4"><img src="docs/images/intro.jpg" alt="Play the 23-second intro: a teaching cursor shows the way through the Fika demo, the person clicks every step themselves, and the rule is stated plainly: Wendmark guides, it never acts" width="640"></a>
+  <br><sub>The 23-second intro, with sound.</sub>
+</p>
+
 ---
 
 Record a process once. Everyone else replays it as guidance: a teaching cursor
